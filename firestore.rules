@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function member(pairId) {
+      return signedIn() && request.auth.uid in get(/databases/$(database)/documents/pairs/$(pairId)).data.members;
+    }
+    function profileAfter(pairId) {
+      return getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.pairId == pairId;
+    }
+    function validDate(d) { return d is string && d.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
+    function dateKey(d) {
+      return int(d.split('-')[0]) * 10000 + int(d.split('-')[1]) * 100 + int(d.split('-')[2]);
+    }
+    function todayKey() {
+      let now = request.time + duration.value(9, 'h');
+      return now.year() * 10000 + now.month() * 100 + now.day();
+    }
+    match /users/{uid} {
+      allow get: if signedIn() && uid == request.auth.uid;
+      allow list, update, delete: if false;
+      allow create: if signedIn() && uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['pairId'])
+        && request.resource.data.pairId is string
+        && request.auth.uid in getAfter(/databases/$(database)/documents/pairs/$(request.resource.data.pairId)).data.members;
+    }
+    match /pairs/{pairId} {
+      // The 128-bit invitation is a capability: direct reads only, never enumeration.
+      allow get: if signedIn() && pairId.matches('^[0-9a-f]{32}$');
+      allow list, delete: if false;
+      allow create: if signedIn() && pairId.matches('^[0-9a-f]{32}$')
+        && request.resource.data.keys().hasOnly(['members', 'names'])
+        && request.resource.data.members == [request.auth.uid]
+        && request.resource.data.names.keys().hasOnly([request.auth.uid])
+        && request.resource.data.names[request.auth.uid] is string
+        && request.resource.data.names[request.auth.uid].size() >= 1
+        && request.resource.data.names[request.auth.uid].size() <= 20
+        && profileAfter(pairId);
+      allow update: if signedIn()
+        && !(request.auth.uid in resource.data.members)
+        && resource.data.members.size() == 1
+        && request.resource.data.keys().hasOnly(['members', 'names'])
+        && request.resource.data.members == resource.data.members.concat([request.auth.uid])
+        && request.resource.data.names.diff(resource.data.names).affectedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.names.keys().hasAll(request.resource.data.members)
+        && request.resource.data.names.keys().size() == 2
+        && request.resource.data.names[request.auth.uid] is string
+        && request.resource.data.names[request.auth.uid].size() >= 1
+        && request.resource.data.names[request.auth.uid].size() <= 20
+        && profileAfter(pairId);
+      match /goals/{goalId} {
+        allow read: if member(pairId);
+        allow create: if member(pairId)
+          && request.resource.data.keys().hasOnly(['ownerId', 'title', 'start', 'end'])
+          && request.resource.data.ownerId == request.auth.uid
+          && request.resource.data.title is string
+          && request.resource.data.title.size() >= 1 && request.resource.data.title.size() <= 60
+          && validDate(request.resource.data.start)
+          && dateKey(request.resource.data.start) == todayKey()
+          && request.resource.data.end == null;
+        allow update: if member(pairId) && resource.data.ownerId == request.auth.uid
+          && resource.data.end == null
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['end'])
+          && validDate(request.resource.data.end)
+          && dateKey(request.resource.data.end) == todayKey()
+          && dateKey(request.resource.data.end) >= dateKey(resource.data.start);
+        allow delete: if false;
+      }
+      match /entries/{entryId} {
+        function validEntry() {
+          let data = request.resource.data;
+          let goal = get(/databases/$(database)/documents/pairs/$(pairId)/goals/$(data.goalId)).data;
+          return data.keys().hasOnly(['ownerId', 'goalId', 'date', 'done'])
+            && data.ownerId == request.auth.uid && goal.ownerId == request.auth.uid
+            && data.goalId is string && data.done is bool && validDate(data.date)
+            && entryId == data.goalId + '_' + data.date
+            && dateKey(data.date) >= dateKey(goal.start)
+            && dateKey(data.date) <= todayKey()
+            && (goal.end == null || dateKey(data.date) <= dateKey(goal.end));
+        }
+        allow read: if member(pairId);
+        allow create: if member(pairId) && validEntry();
+        allow update: if member(pairId) && resource.data.ownerId == request.auth.uid
+          && request.resource.data.ownerId == resource.data.ownerId
+          && request.resource.data.goalId == resource.data.goalId
+          && request.resource.data.date == resource.data.date && validEntry();
+        allow delete: if member(pairId) && resource.data.ownerId == request.auth.uid;
+      }
+    }
+  }
+}

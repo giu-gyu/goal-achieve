@@ -1,0 +1,29 @@
+package com.together.daily
+
+import java.time.LocalDate
+import java.time.DayOfWeek
+import java.time.temporal.TemporalAdjusters
+import kotlin.math.roundToInt
+
+data class Goal(val id: String, val ownerId: String, val title: String, val start: LocalDate, val end: LocalDate? = null) {
+    fun scheduled(date: LocalDate) = date >= start && (end == null || date <= end)
+}
+data class Entry(val goalId: String, val date: LocalDate, val done: Boolean)
+data class Progress(val done: Int, val missed: Int, val unrecorded: Int) {
+    val total get() = done + missed + unrecorded
+    val percent get() = if (total == 0) 0 else (done * 100.0 / total).roundToInt()
+}
+fun progress(goal: Goal, entries: List<Entry>, start: LocalDate, end: LocalDate, today: LocalDate): Progress {
+    val from = maxOf(start, goal.start)
+    val until = minOf(end, today, goal.end ?: end)
+    if (from > until) return Progress(0, 0, 0)
+    val records = entries.filter { it.goalId == goal.id }.associateBy { it.date }
+    var done = 0; var missed = 0; var blank = 0
+    var date = from
+    while (date <= until) {
+        when (records[date]?.done) { true -> done++; false -> missed++; null -> blank++ }
+        date = date.plusDays(1)
+    }
+    return Progress(done, missed, blank)
+}
+fun weekStart(date: LocalDate): LocalDate = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
