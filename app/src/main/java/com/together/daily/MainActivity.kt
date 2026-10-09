@@ -60,8 +60,8 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
     Scaffold(containerColor=Cream,snackbarHost={ SnackbarHost(snackbar) },bottomBar={
         if(vm.pairId.isNotEmpty()) BottomMenu(tab) { tab=it }
     }) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(scroll).padding(horizontal=22.dp),
-            verticalArrangement=Arrangement.spacedBy(22.dp)) {
+        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(scroll).padding(horizontal=if(tab==1&&vm.pairId.isNotEmpty())12.dp else 22.dp),
+            verticalArrangement=Arrangement.spacedBy(if(tab==1&&vm.pairId.isNotEmpty())8.dp else 22.dp)) {
             Spacer(Modifier.height(1.dp))
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                 Box(Modifier.size(34.dp).background(Peach,RoundedCornerShape(12.dp)),contentAlignment=Alignment.Center) {

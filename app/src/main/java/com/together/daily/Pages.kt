@@ -123,16 +123,19 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
     val goals=vm.goals.filter {it.ownerId==ownerId&&it.start<=end&&(it.end==null||it.end>=start)}
     val records=vm.entries.associateBy {it.goalId to it.date}
     val days=(0L..6L).map {start.plusDays(it)}
-    SoftCard {
-        Text(name,fontSize=17.sp,fontWeight=FontWeight.Bold)
+    Surface(color=Color.White,shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+            Text(name,fontSize=15.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+            if(goals.isNotEmpty()) Text("좌우 스크롤 ↔",color=Muted,fontSize=10.sp)
+        }
         if(goals.isEmpty()) Text("이 주에 등록된 목표가 없습니다.",color=Muted,fontSize=13.sp)
         else {
-            Text("좌우로 밀어 월~일 기록을 확인하세요.",color=Muted,fontSize=11.sp)
             Column(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
                 Row(Modifier.height(IntrinsicSize.Min).background(Lavender.copy(alpha=.5f)),verticalAlignment=Alignment.CenterVertically) {
-                    Text("목표",modifier=Modifier.width(160.dp).padding(12.dp),fontWeight=FontWeight.SemiBold,fontSize=13.sp)
+                    Text("목표",modifier=Modifier.width(140.dp).padding(horizontal=8.dp,vertical=4.dp),fontWeight=FontWeight.SemiBold,fontSize=13.sp)
                     days.forEachIndexed {index,day ->
-                        Column(Modifier.width(64.dp).padding(vertical=10.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                        Column(Modifier.width(56.dp).padding(vertical=4.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(0.dp)) {
                             Text(listOf("월","화","수","목","금","토","일")[index],fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=if(day==today)Coral else Ink)
                             Text("${day.monthValue}/${day.dayOfMonth}",fontSize=10.sp,color=if(day==today)Coral else Muted)
                         }
@@ -141,7 +144,7 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
                 goals.forEach {goal ->
                     HorizontalDivider(color=Line)
                     Row(Modifier.height(IntrinsicSize.Min),verticalAlignment=Alignment.CenterVertically) {
-                        Text(goal.title,modifier=Modifier.width(160.dp).heightIn(min=68.dp).wrapContentHeight().padding(12.dp),fontSize=13.sp,lineHeight=19.sp,fontWeight=FontWeight.Medium)
+                        Text(goal.title,modifier=Modifier.width(140.dp).heightIn(min=32.dp).wrapContentHeight().padding(horizontal=8.dp,vertical=4.dp),fontSize=13.sp,lineHeight=17.sp,fontWeight=FontWeight.Medium)
                         days.forEach {day ->
                             val done=records[goal.id to day]?.done
                             val label=when {
@@ -152,13 +155,14 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
                                 else->"미기록"
                             }
                             val color=when(label) {"완료"->Sage;"미완료"->Coral;else->Muted}
-                            Box(Modifier.width(64.dp).fillMaxHeight().background(if(day==today)Peach.copy(alpha=.25f) else Color.Transparent),contentAlignment=Alignment.Center) {
+                            Box(Modifier.width(56.dp).fillMaxHeight().background(if(day==today)Peach.copy(alpha=.25f) else Color.Transparent),contentAlignment=Alignment.Center) {
                                 Text(label,color=color,fontSize=11.sp,fontWeight=if(done==true)FontWeight.Bold else FontWeight.Normal)
                             }
                         }
                     }
                 }
             }
+        }
         }
     }
 }
