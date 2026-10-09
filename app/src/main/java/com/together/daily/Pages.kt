@@ -1,8 +1,5 @@
 package com.together.daily
 
-import android.content.Intent
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
@@ -11,22 +8,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -170,82 +160,42 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
 @Composable
 internal fun StatsPage(vm:DailyViewModel,today:LocalDate,onLogout:()->Unit) {
     var monthly by rememberSaveable {mutableStateOf(false)}
-    var anchorText by rememberSaveable {mutableStateOf(today.toString())}
-    var owner by rememberSaveable {mutableIntStateOf(0)}
-    val anchor=LocalDate.parse(anchorText)
-    val start=if(monthly)anchor.withDayOfMonth(1)else weekStart(anchor)
-    val end=if(monthly)YearMonth.from(anchor).atEndOfMonth()else start.plusDays(6)
-    ConnectionStatus(vm,onLogout)
-    Segments(listOf("이번 주의 발걸음","한 달의 발걸음"),if(monthly)1 else 0){monthly=it==1}
-    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-        IconButton(onClick={anchorText=(if(monthly)start.minusMonths(1)else start.minusWeeks(1)).toString()}) {Mark(Symbol.Back,description="이전 기간")}
-        Text(if(monthly)"${start.year}년 ${start.monthValue}월" else "${start.monthValue}월 ${start.dayOfMonth}일 – ${end.monthValue}월 ${end.dayOfMonth}일",
-            fontSize=14.sp,fontWeight=FontWeight.SemiBold,textAlign=TextAlign.Center,modifier=Modifier.weight(1f))
-        val next=if(monthly)start.plusMonths(1)else start.plusWeeks(1)
-        IconButton(onClick={anchorText=next.toString()},enabled=next<=today) {Mark(Symbol.Next,color=if(next<=today)Ink else Line,description="다음 기간")}
-    }
-    val id=OwnerSwitch(vm,owner){owner=it}
-    val list=vm.goals.filter {it.ownerId==id&&it.start<=minOf(end,today)&&(it.end==null||it.end>=start)}
-    val values=list.map {progress(it,vm.entries,start,end,today)}
-    val done=values.sumOf {it.done}; val missed=values.sumOf {it.missed}; val blank=values.sumOf {it.unrecorded}
-    val total=done+missed+blank
-    val percent=if(total==0)0 else (done*100.0/total).roundToInt()
-    SoftCard(color=Lavender.copy(alpha=.65f)) {
-        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(18.dp)) {
-            ProgressRing(percent)
-            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                Text("전체 목표 달성률",color=Lilac,fontSize=12.sp,fontWeight=FontWeight.Medium)
-                Text(if(total==0)"시작하는 마음도\n충분히 멋져요" else if(percent>=80)"정말 잘하고 있어요\n이대로 함께 걸어요" else "한 걸음도 소중해요\n우리의 속도로 가요",
-                    fontSize=18.sp,lineHeight=27.sp,fontWeight=FontWeight.Bold,letterSpacing=(-.4).sp)
+    var offset by rememberSaveable {mutableLongStateOf(0L)}
+    val start=if(monthly)today.withDayOfMonth(1).plusMonths(offset) else weekStart(today).plusWeeks(offset)
+    val end=if(monthly)YearMonth.from(start).atEndOfMonth() else start.plusDays(6)
+    Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+        ConnectionStatus(vm,onLogout)
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+            Text("달성률",fontSize=14.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+            TextButton(onClick={monthly=false;offset=0},contentPadding=PaddingValues(horizontal=8.dp),modifier=Modifier.height(36.dp)) {Text("주간",fontSize=12.sp,color=if(!monthly)Coral else Muted)}
+            TextButton(onClick={monthly=true;offset=0},contentPadding=PaddingValues(horizontal=8.dp),modifier=Modifier.height(36.dp)) {Text("월간",fontSize=12.sp,color=if(monthly)Coral else Muted)}
+        }
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+            IconButton(onClick={offset--},modifier=Modifier.size(36.dp)) {Mark(Symbol.Back,description="이전 기간")}
+            Text(if(monthly)"${start.year}년 ${start.monthValue}월" else "${start.monthValue}/${start.dayOfMonth} – ${end.monthValue}/${end.dayOfMonth} · ${start.year}",fontSize=12.sp,textAlign=TextAlign.Center,modifier=Modifier.weight(1f))
+            IconButton(onClick={offset++},enabled=offset<0,modifier=Modifier.size(36.dp)) {Mark(Symbol.Next,color=if(offset<0)Ink else Line,description="다음 기간")}
+        }
+        vm.names.entries.sortedBy {if(it.key==vm.uid)0 else 1}.forEach {member ->
+            val values=vm.goals.filter {it.ownerId==member.key}.map {progress(it,vm.entries,start,end,today)}
+            val done=values.sumOf {it.done}
+            val missed=values.sumOf {it.missed}
+            val blank=values.sumOf {it.unrecorded}
+            val total=done+missed+blank
+            val percent=if(total==0)0 else (done*100.0/total).roundToInt()
+            val emoji=when {total==0->"🌱";percent==100->"🏆";percent>=80->"😎";percent>=50->"😊";percent>0->"💪";else->"🌱"}
+            Surface(color=Color.White,shape=RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                    Row(verticalAlignment=Alignment.CenterVertically) {
+                        Text("${member.value} · ${if(member.key==vm.uid) "나" else "짝꿍"}",fontSize=13.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
+                        Text(emoji,fontSize=23.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(if(total==0)"—" else "$percent%",fontSize=19.sp,fontWeight=FontWeight.Bold,color=Coral)
+                    }
+                    LinearProgressIndicator(progress={percent/100f},modifier=Modifier.fillMaxWidth().height(4.dp).clip(CircleShape),color=Coral,trackColor=Peach,drawStopIndicator={})
+                    Text(if(total==0)"이 기간에 기록할 목표가 없습니다." else "완료 $done · 미완료 $missed · 미기록 $blank",fontSize=11.sp,color=Muted)
+                }
             }
         }
-        HorizontalDivider(color=Lilac.copy(alpha=.12f))
-        Row(Modifier.fillMaxWidth()) {
-            Metric("완료",done,Sage,Modifier.weight(1f))
-            Metric("미완료",missed,Lilac,Modifier.weight(1f))
-            Metric("미기록",blank,Muted,Modifier.weight(1f))
-        }
-    }
-    Text("목표별 발걸음",fontSize=18.sp,fontWeight=FontWeight.Bold)
-    if(list.isEmpty()) EmptyGoals("기록은 이제부터 차곡차곡","이 기간에 진행한 목표가 없어요.")
-    list.forEachIndexed {i,goal ->
-        val p=values[i]
-        SoftCard {
-            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-                Box(Modifier.size(36.dp).background(Peach.copy(alpha=.7f),RoundedCornerShape(12.dp)),contentAlignment=Alignment.Center) {Mark(goalSymbol(goal.title),color=Coral,modifier=Modifier.size(18.dp))}
-                Text(goal.title,fontSize=14.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
-                Text("${p.percent}%",fontSize=22.sp,color=Coral,fontWeight=FontWeight.Bold)
-            }
-            LinearProgressIndicator(progress={p.percent/100f},modifier=Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),color=Coral,trackColor=Peach)
-            Text("완료 ${p.done}일  ·  미완료 ${p.missed}일  ·  미기록 ${p.unrecorded}일",fontSize=11.sp,color=Muted)
-            if(goal.end!=null)Text("마무리한 약속",fontSize=10.sp,color=Lilac)
-        }
-    }
-    Text("오늘까지의 기록을 집계해요. 미완료·미기록도 전체 날짜에 포함하며, 목표 시작 전과 종료 후는 제외해요.",color=Muted,fontSize=11.sp,lineHeight=18.sp)
-}
-
-@Composable
-private fun ProgressRing(percent:Int) {
-    val animated by animateFloatAsState(percent.toFloat(),label="progress")
-    Box(Modifier.size(103.dp),contentAlignment=Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            val stroke=8.dp.toPx()
-            val inset=stroke/2
-            val diameter=size.minDimension-stroke
-            drawArc(Color.White,-90f,360f,false,Offset(inset,inset),Size(diameter,diameter),style=Stroke(stroke,cap=StrokeCap.Round))
-            if(animated>0)drawArc(Lilac,-90f,animated*3.6f,false,Offset(inset,inset),Size(diameter,diameter),style=Stroke(stroke,cap=StrokeCap.Round))
-        }
-        Column(horizontalAlignment=Alignment.CenterHorizontally) {
-            Text("$percent%",fontSize=25.sp,fontWeight=FontWeight.Bold,color=Ink)
-            Text("차곡차곡",fontSize=10.sp,color=Lilac)
-        }
-    }
-}
-@Composable
-private fun Metric(label:String,value:Int,color:Color,modifier:Modifier) {
-    Column(modifier,horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(5.dp)) {
-        Text(value.toString(),fontSize=21.sp,fontWeight=FontWeight.Bold,color=color)
-        Text(label,fontSize=11.sp,color=Muted)
     }
 }
 
