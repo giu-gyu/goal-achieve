@@ -27,12 +27,13 @@ internal fun ProfileDialog(vm:DailyViewModel,onDismiss:()->Unit) {
     var resolve by rememberSaveable(vm.uid,profile.resolve) {mutableStateOf(profile.resolve)}
     val prefs=remember(vm.uid){AppAlerts.prefs(context,vm.uid)}
     var partner by rememberSaveable(vm.uid){mutableStateOf(prefs.getBoolean("partner",false))}
+    var goalChanges by rememberSaveable(vm.uid){mutableStateOf(prefs.getBoolean("goalChanges",false))}
     var reminder by rememberSaveable(vm.uid){mutableStateOf(prefs.getBoolean("reminder",false))}
     var hour by rememberSaveable(vm.uid){mutableIntStateOf(prefs.getInt("hour",21))}
     var minute by rememberSaveable(vm.uid){mutableIntStateOf(prefs.getInt("minute",0))}
     var status by remember {mutableStateOf("")}
     fun saveAlerts() {
-        prefs.edit().putBoolean("partner",partner).putBoolean("reminder",reminder).putInt("hour",hour).putInt("minute",minute).apply()
+        prefs.edit().putBoolean("partner",partner).putBoolean("goalChanges",goalChanges).putBoolean("reminder",reminder).putInt("hour",hour).putInt("minute",minute).apply()
         AppAlerts.configure(context,vm.uid,vm.pairId)
         status="알림 설정을 저장했습니다."
     }
@@ -52,13 +53,17 @@ internal fun ProfileDialog(vm:DailyViewModel,onDismiss:()->Unit) {
                 Switch(partner,{partner=it})
             }
             Row(verticalAlignment=Alignment.CenterVertically) {
+                Text("새 목표 추가나 목표 변경시 알람 받기",fontSize=12.sp,modifier=Modifier.weight(1f))
+                Switch(goalChanges,{goalChanges=it})
+            }
+            Row(verticalAlignment=Alignment.CenterVertically) {
                 Text("매일 기록 알림",fontSize=12.sp,modifier=Modifier.weight(1f))
                 Switch(reminder,{reminder=it})
             }
             TextButton(onClick={TimePickerDialog(context,{_,h,m->hour=h;minute=m},hour,minute,true).show()},enabled=reminder) {Text("알림 시간 %02d:%02d (한국 시간)".format(hour,minute))}
             Text("짝꿍 알림은 앱을 열어 둔 동안만 받습니다. 백그라운드 서버 확인은 하지 않습니다. 시간 알림은 절전 상태에서 늦어질 수 있습니다.",fontSize=11.sp,color=Muted)
             TextButton(onClick={
-                if((partner||reminder)&&Build.VERSION.SDK_INT>=33&&context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                if((partner||goalChanges||reminder)&&Build.VERSION.SDK_INT>=33&&context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)permission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 else saveAlerts()
             }) {Text("알림 설정 저장")}
             if(status.isNotEmpty())Text(status,fontSize=11.sp,color=Muted)

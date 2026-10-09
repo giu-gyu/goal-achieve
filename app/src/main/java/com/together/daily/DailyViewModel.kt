@@ -37,6 +37,7 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
     var ready by mutableStateOf(false); private set
     var error by mutableStateOf<String?>(null); private set
     var offline by mutableStateOf(false); private set
+    private var goalAlertBaseline:Map<String,Goal>?=null
     private val listeners = mutableListOf<ListenerRegistration>()
     init { if (uid.isNotEmpty()) loadProfile() }
     fun clearError() { error = null }
@@ -104,6 +105,7 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
     }
     private fun observe(id: String) {
         listeners.forEach { it.remove() }; listeners.clear()
+        goalAlertBaseline=null
         pairId = id
         AppAlerts.configure(getApplication(),uid,id)
         val pair = db!!.collection("pairs").document(id)
@@ -125,6 +127,15 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
                 runCatching { Goal(doc.id, doc.getString("ownerId")!!, doc.getString("title")!!,
                     LocalDate.parse(doc.getString("start")), doc.getString("end")?.let { LocalDate.parse(it) }) }.getOrNull()
             }?.sortedWith(compareBy<Goal> { it.start }.thenBy { it.title }).orEmpty()
+            if(snapshot!=null&&!snapshot.metadata.isFromCache&&!snapshot.metadata.hasPendingWrites()) {
+                val previous=goalAlertBaseline
+                val current=goals.associateBy {it.id}
+                if(previous!=null&&AppAlerts.foreground&&AppAlerts.prefs(getApplication(),uid).getBoolean("goalChanges",false)) {
+                    val changes=goals.filter {it.ownerId!=uid&&(previous[it.id]==null||previous[it.id]?.title!=it.title)}
+                    if(changes.isNotEmpty())AppAlerts.notify(getApplication(),703,if(changes.size==1)"${names[changes[0].ownerId].orEmpty()}님의 목표 ${if(previous[changes[0].id]==null) "추가" else "변경"}: ${changes[0].title}" else "짝꿍의 목표 ${changes.size}개가 추가 또는 변경되었습니다.")
+                }
+                goalAlertBaseline=current
+            }
         }
         listeners += pair.collection("entries").addSnapshotListener(com.google.firebase.firestore.MetadataChanges.INCLUDE) { snapshot, e ->
             if (e != null) { error = "기록을 불러오지 못했어요. 연결을 확인해주세요."; return@addSnapshotListener }
