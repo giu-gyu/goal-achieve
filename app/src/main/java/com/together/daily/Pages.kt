@@ -168,14 +168,14 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
 }
 
 @Composable
-internal fun StatsPage(vm:DailyViewModel,today:LocalDate) {
+internal fun StatsPage(vm:DailyViewModel,today:LocalDate,onLogout:()->Unit) {
     var monthly by rememberSaveable {mutableStateOf(false)}
     var anchorText by rememberSaveable {mutableStateOf(today.toString())}
     var owner by rememberSaveable {mutableIntStateOf(0)}
     val anchor=LocalDate.parse(anchorText)
     val start=if(monthly)anchor.withDayOfMonth(1)else weekStart(anchor)
     val end=if(monthly)YearMonth.from(anchor).atEndOfMonth()else start.plusDays(6)
-    SectionTitle("우리의 꾸준함","작은 실천이 쌓여, 어제보다 조금 더 나아진 우리")
+    ConnectionStatus(vm,onLogout)
     Segments(listOf("이번 주의 발걸음","한 달의 발걸음"),if(monthly)1 else 0){monthly=it==1}
     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
         IconButton(onClick={anchorText=(if(monthly)start.minusMonths(1)else start.minusWeeks(1)).toString()}) {Mark(Symbol.Back,description="이전 기간")}
@@ -250,71 +250,22 @@ private fun Metric(label:String,value:Int,color:Color,modifier:Modifier) {
 }
 
 @Composable
-internal fun CouplePage(vm:DailyViewModel,onLogout:()->Unit) {
-    val context=LocalContext.current
+private fun ConnectionStatus(vm:DailyViewModel,onLogout:()->Unit) {
     val clipboard=LocalClipboardManager.current
-    var copied by remember {mutableStateOf(false)}
-    var logoutDialog by remember {mutableStateOf(false)}
+    var menu by remember {mutableStateOf(false)}
+    var logout by remember {mutableStateOf(false)}
     val members=vm.names.entries.sortedBy {if(it.key==vm.uid)0 else 1}
-    val together=members.size==2
-    SectionTitle("우리 둘의 공간","같이 웃고, 같이 응원하고, 조금씩 같이 자라요.")
-    SoftCard(color=Peach.copy(alpha=.55f)) {
-        Row(Modifier.fillMaxWidth().padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceEvenly) {
-            Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(9.dp)) {
-                Avatar(members.firstOrNull()?.value.orEmpty(),size=60)
-                Text(members.firstOrNull()?.value.orEmpty(),fontSize=14.sp,fontWeight=FontWeight.SemiBold)
-                Text("나",color=Muted,fontSize=11.sp)
-            }
-            Mark(Symbol.Heart,color=Coral,modifier=Modifier.size(26.dp))
-            Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(9.dp)) {
-                Avatar(members.getOrNull(1)?.value?:"?",partner=true,size=60)
-                Text(members.getOrNull(1)?.value?:"기다리는 짝꿍",fontSize=14.sp,fontWeight=FontWeight.SemiBold)
-                Text(if(together)"짝꿍" else "아직 연결 전",color=Muted,fontSize=11.sp)
+    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+        Text(if(members.size==2) "${members[0].value} ♥ ${members[1].value}" else "짝꿍을 기다리고 있어요",fontSize=13.sp,color=Coral,modifier=Modifier.weight(1f))
+        Box {
+            IconButton(onClick={menu=true},modifier=Modifier.size(36.dp)) {Mark(Symbol.More,color=Muted,description="계정 메뉴")}
+            DropdownMenu(expanded=menu,onDismissRequest={menu=false}) {
+                if(members.size<2&&!vm.demo) DropdownMenuItem(text={Text("초대 코드 복사")},onClick={clipboard.setText(AnnotatedString(vm.pairId));menu=false})
+                DropdownMenuItem(text={Text(if(vm.demo)"체험 마치기" else "로그아웃")},onClick={menu=false;logout=true},enabled=!vm.busy)
             }
         }
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center) {StatusPill(if(together)"서로의 하루와 연결됐어요" else "짝꿍을 기다리고 있어요",if(together)Sage else Coral,if(together)Mint else Color.White.copy(alpha=.8f))}
     }
-    if(!vm.demo&&!together) SoftCard {
-        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-            Mark(Symbol.Share,color=Coral)
-            Text("우리의 연결 코드",fontSize=17.sp,fontWeight=FontWeight.Bold)
-        }
-        Text("짝꿍이 자신의 계정으로 가입한 뒤\n이 코드를 입력하면 같은 공간으로 연결돼요.",fontSize=13.sp,color=Muted,lineHeight=21.sp)
-        Surface(color=Cream,shape=RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth()) {
-            SelectionContainer {Text(vm.pairId,modifier=Modifier.padding(14.dp),fontFamily=FontFamily.Monospace,fontSize=12.sp,color=Ink,textAlign=TextAlign.Center)}
-        }
-        PrimaryAction("짝꿍에게 초대 코드 보내기",symbol=Symbol.Share,onClick={
-            context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-                type="text/plain";putExtra(Intent.EXTRA_TEXT,vm.pairId)
-            },"초대 코드 공유"))
-        })
-        TextButton(onClick={clipboard.setText(AnnotatedString(vm.pairId));copied=true},modifier=Modifier.align(Alignment.CenterHorizontally)) {
-            Mark(if(copied)Symbol.Check else Symbol.Copy,color=Muted,modifier=Modifier.size(15.dp));Spacer(Modifier.width(6.dp))
-            Text(if(copied)"코드를 복사했어요" else "코드만 복사하기",color=Muted,fontSize=12.sp)
-        }
-    }
-    SoftCard {
-        Text("우리의 기록을 읽는 방법",fontSize=16.sp,fontWeight=FontWeight.Bold)
-        InfoRow(Symbol.Calendar,"하루하루 기록하기","한국 시간 기준으로 매일 기록해요.\n내 기록은 지난 날짜도 수정할 수 있어요.")
-        HorizontalDivider(color=Line)
-        InfoRow(Symbol.Chart,"꾸준함을 함께 보기","달성률은 완료한 날 ÷ 목표가 있는 날이에요.\n한 주는 월요일부터 일요일까지 집계해요.")
-        HorizontalDivider(color=Line)
-        InfoRow(Symbol.Heart,"서로의 속도 존중하기","짝꿍의 기록은 함께 볼 수 있어요.\n기록 수정은 각자 자신의 것만 할 수 있어요.")
-    }
-    TextButton(onClick={logoutDialog=true},enabled=!vm.busy,modifier=Modifier.fillMaxWidth()) {Text(if(vm.demo)"체험 마치기" else "로그아웃",color=Muted,fontSize=12.sp)}
-    if(logoutDialog) AlertDialog(onDismissRequest={logoutDialog=false},containerColor=Cream,shape=RoundedCornerShape(28.dp),
-        title={Text(if(vm.demo)"체험을 마칠까요?" else "잠시 로그아웃할까요?",fontSize=21.sp,fontWeight=FontWeight.Bold)},
-        text={Text(if(vm.demo)"체험 기록은 저장되지 않아요." else "우리의 기록은 안전하게 남아 있어요.\n같은 계정으로 언제든 다시 만나세요.",color=Muted,lineHeight=22.sp)},
-        confirmButton={TextButton(onClick={logoutDialog=false;onLogout()}){Text("로그아웃")}},
-        dismissButton={TextButton(onClick={logoutDialog=false}){Text("취소")}})
-}
-@Composable
-private fun InfoRow(symbol:Symbol,title:String,body:String) {
-    Row(horizontalArrangement=Arrangement.spacedBy(12.dp),verticalAlignment=Alignment.Top) {
-        Mark(symbol,color=Lilac,modifier=Modifier.padding(top=2.dp).size(18.dp))
-        Column(verticalArrangement=Arrangement.spacedBy(5.dp)) {
-            Text(title,fontSize=13.sp,fontWeight=FontWeight.SemiBold)
-            Text(body,fontSize=11.sp,color=Muted,lineHeight=18.sp)
-        }
-    }
+    if(logout) AlertDialog(onDismissRequest={logout=false},title={Text("로그아웃할까요?")},
+        confirmButton={TextButton(onClick={logout=false;onLogout()},enabled=!vm.busy){Text("로그아웃")}},
+        dismissButton={TextButton(onClick={logout=false}){Text("취소")}})
 }

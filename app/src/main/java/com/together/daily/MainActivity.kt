@@ -62,8 +62,8 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
         if(vm.pairId.isNotEmpty()) BottomMenu(tab) { tab=it }
     }) { padding ->
         Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(scroll).padding(horizontal=if(tab==1&&vm.pairId.isNotEmpty())12.dp else 22.dp),
-            verticalArrangement=Arrangement.spacedBy(if(tab==1&&vm.pairId.isNotEmpty())8.dp else 22.dp)) {
+        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(scroll).padding(horizontal=if(tab!=0&&vm.pairId.isNotEmpty())12.dp else 22.dp),
+            verticalArrangement=Arrangement.spacedBy(if(tab!=0&&vm.pairId.isNotEmpty())8.dp else 22.dp)) {
             Spacer(Modifier.height(1.dp))
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                 Box(Modifier.size(34.dp).background(Peach,RoundedCornerShape(12.dp)),contentAlignment=Alignment.Center) {
@@ -72,7 +72,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
                 Spacer(Modifier.width(10.dp))
                 Text("쏘규 Daily 챌린지",color=Ink,fontSize=20.sp,fontWeight=FontWeight.Bold,letterSpacing=(-.5).sp,modifier=Modifier.weight(1f))
                 if(vm.pairId.isNotEmpty()) {
-                    Box(Modifier.clip(CircleShape).clickable { tab=3 }) { Avatar(vm.names[vm.uid].orEmpty()) }
+                    Box(Modifier.clip(CircleShape).clickable { tab=2 }) { Avatar(vm.names[vm.uid].orEmpty()) }
                 } else Text("WITH YOU",color=Lilac,fontSize=10.sp,fontWeight=FontWeight.SemiBold,letterSpacing=1.sp)
             }
             if(vm.busy) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp),color=Coral,trackColor=Peach)
@@ -99,8 +99,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
                     when(tab) {
                         0 -> TodayPage(vm,today,onEdit={editing=true},onCelebrate={celebration++})
                         1 -> HistoryPage(vm,today)
-                        2 -> StatsPage(vm,today)
-                        3 -> CouplePage(vm,onLogout={vm.logout();tab=0})
+                        2,3 -> StatsPage(vm,today,onLogout={vm.logout();tab=0})
                     }
                 }
             }
@@ -137,12 +136,12 @@ private fun BottomMenu(selected: Int,onSelect:(Int)->Unit) {
     Surface(color=Color.White,shadowElevation=8.dp) {
         Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal=18.dp,vertical=10.dp),
             horizontalArrangement=Arrangement.SpaceEvenly) {
-            listOf("오늘","기록","달성률","우리").forEachIndexed {i,title ->
+            listOf("오늘","기록","달성률").forEachIndexed {i,title ->
                 Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).clickable {onSelect(i)}.padding(vertical=4.dp),
                     horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(5.dp)) {
                     val bg by animateColorAsState(if(selected==i)Peach else Color.Transparent,label="navigation")
                     Box(Modifier.size(width=48.dp,height=29.dp).background(bg,RoundedCornerShape(11.dp)),contentAlignment=Alignment.Center) {
-                        Mark(listOf(Symbol.Home,Symbol.Calendar,Symbol.Chart,Symbol.People)[i],color=if(selected==i)Coral else Muted,modifier=Modifier.size(20.dp))
+                        Mark(listOf(Symbol.Home,Symbol.Calendar,Symbol.Chart)[i],color=if(selected==i)Coral else Muted,modifier=Modifier.size(20.dp))
                     }
                     Text(title,color=if(selected==i)Coral else Muted,fontSize=11.sp,fontWeight=if(selected==i)FontWeight.SemiBold else FontWeight.Normal)
                 }
