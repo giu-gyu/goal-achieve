@@ -36,7 +36,13 @@ service cloud.firestore {
         && request.resource.data.names[request.auth.uid].size() >= 1
         && request.resource.data.names[request.auth.uid].size() <= 20
         && profileAfter(pairId);
-      allow update: if signedIn()
+      allow update: if (member(pairId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['names'])
+        && request.resource.data.names.diff(resource.data.names).affectedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.names[request.auth.uid] is string
+        && request.resource.data.names[request.auth.uid].size() >= 1
+        && request.resource.data.names[request.auth.uid].size() <= 20)
+        || (signedIn()
         && !(request.auth.uid in resource.data.members)
         && resource.data.members.size() == 1
         && request.resource.data.keys().hasOnly(['members', 'names'])
@@ -47,7 +53,25 @@ service cloud.firestore {
         && request.resource.data.names[request.auth.uid] is string
         && request.resource.data.names[request.auth.uid].size() >= 1
         && request.resource.data.names[request.auth.uid].size() <= 20
-        && profileAfter(pairId);
+        && profileAfter(pairId));
+      match /profiles/{uid} {
+        allow read: if member(pairId);
+        allow create, update: if member(pairId) && uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['bio','resolve'])
+          && request.resource.data.bio is string && request.resource.data.bio.size() <= 200
+          && request.resource.data.resolve is string && request.resource.data.resolve.size() <= 200;
+      }
+      match /memos/{memoId} {
+        allow read: if member(pairId);
+        allow create, update: if member(pairId)
+          && request.resource.data.keys().hasOnly(['ownerId','date','text'])
+          && request.resource.data.ownerId == request.auth.uid
+          && validDate(request.resource.data.date)
+          && dateKey(request.resource.data.date) <= todayKey()
+          && memoId == request.auth.uid + '_' + request.resource.data.date
+          && request.resource.data.text is string && request.resource.data.text.size() <= 2000;
+        allow delete: if member(pairId) && resource.data.ownerId == request.auth.uid;
+      }
       match /goals/{goalId} {
         allow read: if member(pairId);
         allow create: if member(pairId)

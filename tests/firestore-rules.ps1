@@ -55,6 +55,16 @@ $third = @{members=@('alice','bob','mallory'); names=@{alice='Alice'; bob='Bob';
 Check 'third member denied' 'mallory' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair" $third),(WriteDoc 'users/mallory' @{pairId=$taskPair}))} 403
 $now = [TimeZoneInfo]::ConvertTimeBySystemTimeZoneId([DateTime]::UtcNow, 'Korea Standard Time')
 $today = $now.ToString('yyyy-MM-dd')
+$memo = @{ownerId='alice'; date=$today; text='Daily memo'}
+Check 'owner saves memo' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/memos/alice_$today" $memo))} 200
+Check 'partner reads memo' 'bob' 'GET' "$taskBase/pairs/$taskPair/memos/alice_$today" $null 200
+Check 'partner cannot overwrite memo' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/memos/alice_$today" $memo))} 403
+Check 'outsider cannot read memo' 'mallory' 'GET' "$taskBase/pairs/$taskPair/memos/alice_$today" $null 403
+Check 'owner saves profile' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/profiles/alice" @{bio='Hello';resolve='Every day'}))} 200
+Check 'partner cannot change profile' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/profiles/alice" @{bio='Changed';resolve='Every day'}))} 403
+$pair.names.alice='New Alice'
+Check 'partner cannot change name' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair" $pair))} 403
+Check 'owner changes name' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair" $pair))} 200
 $goal = @{ownerId='alice'; title='Walk'; start=$today; end=$null}
 Check 'owner creates goal' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 200
 Check 'partner reads goal' 'bob' 'GET' "$taskBase/pairs/$taskPair/goals/walk" $null 200

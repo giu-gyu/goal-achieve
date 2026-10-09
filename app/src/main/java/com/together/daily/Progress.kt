@@ -27,3 +27,6 @@ fun progress(goal: Goal, entries: List<Entry>, start: LocalDate, end: LocalDate,
     return Progress(done, missed, blank)
 }
 fun weekStart(date: LocalDate): LocalDate = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+
+data class DailyMemo(val ownerId:String,val date:LocalDate,val text:String)
+data class MemberProfile(val bio:String="",val resolve:String="")

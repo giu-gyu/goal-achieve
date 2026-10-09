@@ -31,6 +31,8 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
     var names by mutableStateOf<Map<String, String>>(emptyMap()); private set
     var goals by mutableStateOf<List<Goal>>(emptyList()); private set
     var entries by mutableStateOf<List<Entry>>(emptyList()); private set
+    var memos by mutableStateOf<List<DailyMemo>>(emptyList()); private set
+    var profiles by mutableStateOf<Map<String,MemberProfile>>(emptyMap()); private set
     var busy by mutableStateOf(false); private set
     var ready by mutableStateOf(false); private set
     var error by mutableStateOf<String?>(null); private set
@@ -108,6 +110,14 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
             if (e != null) { error = "커플 정보를 불러오지 못했어요."; return@addSnapshotListener }
             names = (snapshot?.get("names") as? Map<*, *>)?.entries?.associate { it.key.toString() to it.value.toString() }.orEmpty()
         }
+        listeners += pair.collection("memos").addSnapshotListener { snapshot,e ->
+            if(e!=null) {error="메모를 불러오지 못했습니다. Firebase 규칙을 확인하세요.";return@addSnapshotListener}
+            memos=snapshot?.documents?.mapNotNull {doc -> runCatching {DailyMemo(doc.getString("ownerId")!!,LocalDate.parse(doc.getString("date")),doc.getString("text")!!)}.getOrNull()}.orEmpty()
+        }
+        listeners += pair.collection("profiles").addSnapshotListener {snapshot,e ->
+            if(e!=null) {error="프로필을 불러오지 못했습니다. Firebase 규칙을 확인하세요.";return@addSnapshotListener}
+            profiles=snapshot?.documents?.associate {it.id to MemberProfile(it.getString("bio").orEmpty(),it.getString("resolve").orEmpty())}.orEmpty()
+        }
         listeners += pair.collection("goals").addSnapshotListener { snapshot, e ->
             if (e != null) { error = "목표를 불러오지 못했어요. 연결을 확인해주세요."; return@addSnapshotListener }
             goals = snapshot?.documents?.mapNotNull { doc ->
@@ -122,6 +132,21 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
                 runCatching { Entry(doc.getString("goalId")!!, LocalDate.parse(doc.getString("date")), doc.getBoolean("done")!!) }.getOrNull()
             }.orEmpty()
         }
+    }
+    fun saveMemo(date:LocalDate,text:String)=work {
+        require(text.length<=2000 && date<=koreaToday())
+        if(demo) {memos=memos.filterNot {it.ownerId==uid&&it.date==date}+if(text.isBlank())emptyList() else listOf(DailyMemo(uid,date,text.trim()));return@work}
+        val ref=db!!.collection("pairs").document(pairId).collection("memos").document(uid+"_"+date)
+        if(text.isBlank())ref.delete().await() else ref.set(mapOf("ownerId" to uid,"date" to date.toString(),"text" to text.trim())).await()
+    }
+    fun saveProfile(name:String,bio:String,resolve:String)=work {
+        require(name.trim().length in 1..20&&bio.length<=200&&resolve.length<=200)
+        if(demo) {names=names+(uid to name.trim());profiles=profiles+(uid to MemberProfile(bio,resolve));return@work}
+        val pair=db!!.collection("pairs").document(pairId)
+        val batch=db.batch()
+        batch.update(pair,com.google.firebase.firestore.FieldPath.of("names",uid),name.trim())
+        batch.set(pair.collection("profiles").document(uid),mapOf("bio" to bio.trim(),"resolve" to resolve.trim()))
+        batch.commit().await()
     }
     fun addGoal(title: String) = work {
         require(title.trim().length in 1..60) { "목표는 1~60자로 입력해주세요." }
