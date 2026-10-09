@@ -179,6 +179,14 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,onEdit:()->Unit,onCelebr
             else pendingCelebration=null
             vm.record(goal,today,value)
         })}
+    val saved=vm.memos.firstOrNull {it.ownerId==vm.uid&&it.date==today}?.text.orEmpty()
+    var memo by rememberSaveable(vm.uid,today.toString(),saved) {mutableStateOf(saved)}
+    Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
+        Text("오늘 메모",fontSize=14.sp,fontWeight=FontWeight.SemiBold)
+        OutlinedTextField(memo,{if(it.length<=2000)memo=it},placeholder={Text("오늘의 메모")},minLines=2,maxLines=5,modifier=Modifier.fillMaxWidth())
+        TextButton(onClick={vm.saveMemo(today,memo)},enabled=!vm.busy&&memo.trim()!=saved,modifier=Modifier.align(Alignment.End)) {Text("메모 저장")}
+    }
+
 }
 
 @Composable

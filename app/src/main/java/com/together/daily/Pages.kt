@@ -103,6 +103,10 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
     val members=vm.names.entries.sortedBy {if(it.key==vm.uid)0 else 1}
     members.forEach {member ->
         WeeklyRecords(vm,member.key,"${member.value} · ${if(member.key==vm.uid) "나" else "짝꿍"}",start,end,today)
+        vm.memos.filter {it.ownerId==member.key&&it.date>=start&&it.date<=end}.sortedBy {it.date}.forEach {memo ->
+            Text("${memo.date.monthValue}/${memo.date.dayOfMonth} 메모",fontSize=11.sp,color=Muted)
+            Text(memo.text,fontSize=12.sp,lineHeight=17.sp)
+        }
     }
     if(members.size<2) Text("상대방이 연결되면 주간 기록이 여기에 표시됩니다.",color=Muted,fontSize=12.sp)
     }
