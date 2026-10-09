@@ -36,7 +36,7 @@ internal object AppAlerts {
         val alarm=c.getSystemService(AlarmManager::class.java)
         val intent=PendingIntent.getBroadcast(c,701,Intent(c,DailyReminder::class.java).putExtra("uid",uid),PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         alarm.cancel(intent)
-        if(!p.getBoolean("reminder",false))return
+        if(!p.getBoolean("unrecordedReminder",true))return
         val zone=ZoneId.of("Asia/Seoul")
         val now=ZonedDateTime.now(zone)
         var next=now.withHour(p.getInt("hour",21)).withMinute(p.getInt("minute",0)).withSecond(0).withNano(0)
@@ -60,8 +60,20 @@ class DailyReminder:BroadcastReceiver() {
     override fun onReceive(context:Context,intent:Intent) {
         val uid=intent.getStringExtra("uid")?:return
         if(context.getSharedPreferences("alert_session",Context.MODE_PRIVATE).getString("uid",null)!=uid)return
-        if(AppAlerts.prefs(context,uid).getBoolean("reminder",false))AppAlerts.notify(context,701,"오늘 목표를 확인하고 완료 여부를 기록해주세요.")
         AppAlerts.scheduleReminder(context,uid)
+        if(!AppAlerts.prefs(context,uid).getBoolean("unrecordedReminder",true)||uid=="me")return
+        val pair=context.getSharedPreferences("alert_session",Context.MODE_PRIVATE).getString("pair",null)?:return
+        val pending=goAsync()
+        CoroutineScope(Dispatchers.IO+SupervisorJob()).launch {
+            try {withTimeout(8000) {
+                val (_,goals,entries)=fetchDailyRecords(context,uid,pair)
+                val status=recordingStatus(goals,entries,uid,koreaToday())
+                if(status.missing>0&&AppAlerts.prefs(context,uid).getBoolean("unrecordedReminder",true)&&context.getSharedPreferences("alert_session",Context.MODE_PRIVATE).getString("uid",null)==uid)
+                    AppAlerts.notify(context,701,"아직 완료·미완료를 기록하지 않은 목표가 ${status.missing}개 있어요.")
+            }}catch(e:Exception) {
+                // Do not remind using unknown or stale recording state.
+            }finally {pending.finish()}
+        }
     }
 }
 class AlertBootReceiver:BroadcastReceiver() {

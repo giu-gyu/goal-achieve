@@ -28,12 +28,12 @@ internal fun ProfileDialog(vm:DailyViewModel,onDismiss:()->Unit) {
     val prefs=remember(vm.uid){AppAlerts.prefs(context,vm.uid)}
     var partner by rememberSaveable(vm.uid){mutableStateOf(prefs.getBoolean("partnerRecorded",true))}
     var goalChanges by rememberSaveable(vm.uid){mutableStateOf(prefs.getBoolean("goalChanges",false))}
-    var reminder by rememberSaveable(vm.uid){mutableStateOf(prefs.getBoolean("reminder",false))}
+    var reminder by rememberSaveable(vm.uid){mutableStateOf(prefs.getBoolean("unrecordedReminder",true))}
     var hour by rememberSaveable(vm.uid){mutableIntStateOf(prefs.getInt("hour",21))}
     var minute by rememberSaveable(vm.uid){mutableIntStateOf(prefs.getInt("minute",0))}
     var status by remember {mutableStateOf("")}
     fun saveAlerts() {
-        prefs.edit().putBoolean("partnerRecorded",partner).putBoolean("goalChanges",goalChanges).putBoolean("reminder",reminder).putInt("hour",hour).putInt("minute",minute).apply()
+        prefs.edit().putBoolean("partnerRecorded",partner).putBoolean("goalChanges",goalChanges).putBoolean("unrecordedReminder",reminder).putInt("hour",hour).putInt("minute",minute).apply()
         AppAlerts.configure(context,vm.uid,vm.pairId)
         status="알림 설정을 저장했습니다."
     }
@@ -57,7 +57,7 @@ internal fun ProfileDialog(vm:DailyViewModel,onDismiss:()->Unit) {
                 Switch(goalChanges,{goalChanges=it})
             }
             Row(verticalAlignment=Alignment.CenterVertically) {
-                Text("매일 기록 알림",fontSize=12.sp,modifier=Modifier.weight(1f))
+                Text("미입력 목표가 있을 때 시간 알림",fontSize=12.sp,modifier=Modifier.weight(1f))
                 Switch(reminder,{reminder=it})
             }
             TextButton(onClick={TimePickerDialog(context,{_,h,m->hour=h;minute=m},hour,minute,true).show()},enabled=reminder) {Text("알림 시간 %02d:%02d (한국 시간)".format(hour,minute))}
