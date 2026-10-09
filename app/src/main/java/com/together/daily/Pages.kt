@@ -1,6 +1,6 @@
 package com.together.daily
 
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.border
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -113,46 +113,32 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
     val goals=vm.goals.filter {it.ownerId==ownerId&&it.start<=end&&(it.end==null||it.end>=start)}
     val records=vm.entries.associateBy {it.goalId to it.date}
     val days=(0L..6L).map {start.plusDays(it)}
-    Surface(color=Color.White,shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-            Text(name,fontSize=15.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
-            if(goals.isNotEmpty()) Text("좌우 스크롤 ↔",color=Muted,fontSize=10.sp)
-        }
-        if(goals.isEmpty()) Text("이 주에 등록된 목표가 없습니다.",color=Muted,fontSize=13.sp)
-        else {
-            Column(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
-                Row(Modifier.height(IntrinsicSize.Min).background(Lavender.copy(alpha=.5f)),verticalAlignment=Alignment.CenterVertically) {
-                    Text("목표",modifier=Modifier.width(140.dp).padding(horizontal=8.dp,vertical=4.dp),fontWeight=FontWeight.SemiBold,fontSize=13.sp)
-                    days.forEachIndexed {index,day ->
-                        Column(Modifier.width(56.dp).padding(vertical=4.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(0.dp)) {
-                            Text(listOf("월","화","수","목","금","토","일")[index],fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=if(day==today)Coral else Ink)
-                            Text("${day.monthValue}/${day.dayOfMonth}",fontSize=10.sp,color=if(day==today)Coral else Muted)
-                        }
+    Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+        Text(name,fontSize=14.sp,fontWeight=FontWeight.Bold)
+        if(goals.isEmpty()) Text("이 주에 등록된 목표가 없습니다.",color=Muted,fontSize=12.sp)
+        else Column(Modifier.fillMaxWidth().border(.5.dp,Muted.copy(alpha=.5f))) {
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).background(Lavender)) {
+                Box(Modifier.weight(3f).fillMaxHeight().padding(4.dp),contentAlignment=Alignment.CenterStart) {Text("목표",fontSize=12.sp)}
+                days.forEachIndexed {i,day ->
+                    Column(Modifier.weight(1f).border(.5.dp,Muted.copy(alpha=.5f)).padding(vertical=3.dp),horizontalAlignment=Alignment.CenterHorizontally) {
+                        Text(listOf("월","화","수","목","금","토","일")[i],fontSize=11.sp)
+                        Text(day.dayOfMonth.toString(),fontSize=10.sp,color=if(day==today)Coral else Muted)
                     }
                 }
-                goals.forEach {goal ->
-                    HorizontalDivider(color=Line)
-                    Row(Modifier.height(IntrinsicSize.Min),verticalAlignment=Alignment.CenterVertically) {
-                        Text(goal.title,modifier=Modifier.width(140.dp).heightIn(min=32.dp).wrapContentHeight().padding(horizontal=8.dp,vertical=4.dp),fontSize=13.sp,lineHeight=17.sp,fontWeight=FontWeight.Medium)
-                        days.forEach {day ->
-                            val done=records[goal.id to day]?.done
-                            val label=when {
-                                !goal.scheduled(day)->"—"
-                                day>today->"예정"
-                                done==true->"완료"
-                                done==false->"미완료"
-                                else->"미기록"
-                            }
-                            val color=when(label) {"완료"->Sage;"미완료"->Coral;else->Muted}
-                            Box(Modifier.width(56.dp).fillMaxHeight().background(if(day==today)Peach.copy(alpha=.25f) else Color.Transparent),contentAlignment=Alignment.Center) {
-                                Text(label,color=color,fontSize=11.sp,fontWeight=if(done==true)FontWeight.Bold else FontWeight.Normal)
-                            }
+            }
+            goals.forEach {goal ->
+                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                    Box(Modifier.weight(3f).fillMaxHeight().border(.5.dp,Muted.copy(alpha=.5f)).padding(4.dp),contentAlignment=Alignment.CenterStart) {Text(goal.title,fontSize=12.sp,lineHeight=15.sp)}
+                    days.forEach {day ->
+                        val done=records[goal.id to day]?.done
+                        val applicable=goal.scheduled(day)&&day<=today
+                        val label=if(!applicable||done==null) "" else if(done) "O" else "X"
+                        Box(Modifier.weight(1f).fillMaxHeight().heightIn(min=28.dp).border(.5.dp,Muted.copy(alpha=.5f)).background(if(day==today)Peach.copy(alpha=.3f)else Color.White),contentAlignment=Alignment.Center) {
+                            Text(label,fontSize=14.sp,fontWeight=FontWeight.Bold,color=if(done==true)Color(0xFF1565C0) else Color(0xFFC62828))
                         }
                     }
                 }
             }
-        }
         }
     }
 }

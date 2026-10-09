@@ -62,7 +62,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
         if(vm.pairId.isNotEmpty()) BottomMenu(tab) { tab=it }
     }) { padding ->
         Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(scroll).padding(horizontal=if(tab!=0&&vm.pairId.isNotEmpty())12.dp else 22.dp),
+        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(scroll).padding(horizontal=if(tab==1&&vm.pairId.isNotEmpty())0.dp else if(tab==2&&vm.pairId.isNotEmpty())12.dp else 22.dp),
             verticalArrangement=Arrangement.spacedBy(if(tab!=0&&vm.pairId.isNotEmpty())8.dp else 22.dp)) {
             Spacer(Modifier.height(1.dp))
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
