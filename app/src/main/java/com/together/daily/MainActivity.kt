@@ -114,6 +114,8 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
     if(profileOpen&&vm.pairId.isNotEmpty()) ProfileDialog(vm,onDismiss={profileOpen=false})
     if(editing) GoalEditor(vm,onAdd={adding=true},onDismiss={editing=false})
     if(adding) {
+        val ownGoals=vm.goals.filter {it.ownerId==vm.uid}
+        var position by rememberSaveable {mutableIntStateOf(ownGoals.size)}
         var title by rememberSaveable { mutableStateOf("") }
         AlertDialog(onDismissRequest={adding=false},containerColor=Cream,shape=RoundedCornerShape(28.dp),
             icon={Mark(Symbol.Leaf,color=Sage,modifier=Modifier.size(28.dp))},
@@ -123,8 +125,13 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
                 OutlinedTextField(title,{if(it.length<=60)title=it},singleLine=true,
                     placeholder={Text("목표 이름",fontSize=13.sp)},shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth())
 
+                Row(verticalAlignment=Alignment.CenterVertically) {
+                    Text("추가 위치: ${position.coerceAtMost(ownGoals.size)+1}번째",fontSize=13.sp,modifier=Modifier.weight(1f))
+                    TextButton(onClick={position--},enabled=position>0&&!vm.busy){Text("↑")}
+                    TextButton(onClick={position++},enabled=position<ownGoals.size&&!vm.busy){Text("↓")}
+                }
             }},
-            confirmButton={Button(onClick={vm.addGoal(title);adding=false},enabled=title.isNotBlank()&&!vm.busy,shape=RoundedCornerShape(12.dp)) {Text("추가")}},
+            confirmButton={Button(onClick={vm.addGoal(title,position);adding=false},enabled=title.isNotBlank()&&!vm.busy,shape=RoundedCornerShape(12.dp)) {Text("추가")}},
             dismissButton={TextButton(onClick={adding=false}){Text("취소")}})
     }
 
@@ -196,11 +203,13 @@ private fun GoalEditor(vm:DailyViewModel,onAdd:()->Unit,onDismiss:()->Unit) {
         text={Column(Modifier.fillMaxWidth().heightIn(max=450.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(14.dp)) {
             val goals=vm.goals.filter {it.ownerId==vm.uid}
             if(goals.isEmpty()) Text("등록된 목표가 없습니다.",color=Muted)
-            goals.forEach {goal -> key(goal.id) {
+            goals.forEachIndexed {index,goal -> key(goal.id) {
                 var title by rememberSaveable(goal.title) {mutableStateOf(goal.title)}
                 Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
                     OutlinedTextField(title,{if(it.length<=60)title=it},label={Text("목표 명칭")},singleLine=true,enabled=!vm.busy,modifier=Modifier.fillMaxWidth())
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                        TextButton(onClick={vm.moveGoal(goal,-1)},enabled=!vm.busy&&index>0,contentPadding=PaddingValues(4.dp)){Text("↑")}
+                        TextButton(onClick={vm.moveGoal(goal,1)},enabled=!vm.busy&&index<goals.lastIndex,contentPadding=PaddingValues(4.dp)){Text("↓")}
                         Spacer(Modifier.weight(1f))
                         TextButton(onClick={vm.renameGoal(goal,title)},enabled=!vm.busy&&title.isNotBlank()&&title.trim()!=goal.title) {Text("저장")}
                         TextButton(onClick={deleting=goal},enabled=!vm.busy) {Text("삭제")}

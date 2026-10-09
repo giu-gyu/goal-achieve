@@ -5,7 +5,7 @@ import java.time.DayOfWeek
 import java.time.temporal.TemporalAdjusters
 import kotlin.math.roundToInt
 
-data class Goal(val id: String, val ownerId: String, val title: String, val start: LocalDate, val end: LocalDate? = null) {
+data class Goal(val id: String, val ownerId: String, val title: String, val start: LocalDate, val end: LocalDate? = null, val order:Int=Int.MAX_VALUE) {
     fun scheduled(date: LocalDate) = date >= start && (end == null || date <= end)
 }
 data class Entry(val goalId: String, val date: LocalDate, val done: Boolean)

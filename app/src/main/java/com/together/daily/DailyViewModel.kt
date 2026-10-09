@@ -125,8 +125,8 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
             if (e != null) { error = "목표를 불러오지 못했어요. 연결을 확인해주세요."; return@addSnapshotListener }
             goals = snapshot?.documents?.mapNotNull { doc ->
                 runCatching { Goal(doc.id, doc.getString("ownerId")!!, doc.getString("title")!!,
-                    LocalDate.parse(doc.getString("start")), doc.getString("end")?.let { LocalDate.parse(it) }) }.getOrNull()
-            }?.sortedWith(compareBy<Goal> { it.start }.thenBy { it.title }).orEmpty()
+                    LocalDate.parse(doc.getString("start")), doc.getString("end")?.let { LocalDate.parse(it) },doc.getLong("order")?.toInt()?:Int.MAX_VALUE) }.getOrNull()
+            }?.sortedWith(compareBy<Goal> { it.order }.thenBy { it.start }.thenBy { it.title }).orEmpty()
             if(snapshot!=null&&!snapshot.metadata.isFromCache&&!snapshot.metadata.hasPendingWrites()) {
                 val previous=goalAlertBaseline
                 val current=goals.associateBy {it.id}
@@ -167,15 +167,37 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         batch.set(pair.collection("profiles").document(uid),mapOf("bio" to bio.trim(),"resolve" to resolve.trim()))
         batch.commit().await()
     }
-    fun addGoal(title: String) = work {
-        require(title.trim().length in 1..60) { "목표는 1~60자로 입력해주세요." }
-        if (demo) {
-            goals = goals + Goal(UUID.randomUUID().toString(), uid, title.trim(), koreaToday())
-            return@work
+    fun addGoal(title:String,position:Int?=null)=work {
+        require(title.trim().length in 1..60) {"목표는 1~60자로 입력해주세요."}
+        val own=goals.filter {it.ownerId==uid}.toMutableList()
+        require(own.size<450) {"목표는 최대 450개까지 등록할 수 있습니다."}
+        val index=(position?:own.size).coerceIn(0,own.size)
+        val ref=if(demo)null else db!!.collection("pairs").document(pairId).collection("goals").document()
+        val new=Goal(ref?.id?:UUID.randomUUID().toString(),uid,title.trim(),koreaToday())
+        own.add(index,new)
+        val ordered=own.mapIndexed {i,g->g.copy(order=i)}
+        if(demo) {goals=goals.filterNot {it.ownerId==uid}+ordered;return@work}
+        val batch=db!!.batch()
+        ordered.forEach {g ->
+            if(g.id==new.id)batch.set(ref!!,mapOf("ownerId" to uid,"title" to g.title,"start" to g.start.toString(),"end" to null,"order" to g.order))
+            else batch.update(ref!!.parent.document(g.id),"order",g.order)
         }
-        db!!.collection("pairs").document(pairId).collection("goals").add(mapOf(
-            "ownerId" to uid, "title" to title.trim(), "start" to koreaToday().toString(), "end" to null
-        )).await()
+        batch.commit().await()
+    }
+    fun moveGoal(goal:Goal,direction:Int)=work {
+        require(goal.ownerId==uid&&direction in listOf(-1,1))
+        val own=goals.filter {it.ownerId==uid}.toMutableList()
+        require(own.size<=450)
+        val index=own.indexOfFirst {it.id==goal.id}
+        val target=index+direction
+        if(index<0||target !in own.indices)return@work
+        own.removeAt(index);own.add(target,goal)
+        val ordered=own.mapIndexed {i,g->g.copy(order=i)}
+        if(demo) {goals=goals.filterNot {it.ownerId==uid}+ordered;return@work}
+        val refs=db!!.collection("pairs").document(pairId).collection("goals")
+        val batch=db.batch()
+        ordered.forEach {batch.update(refs.document(it.id),"order",it.order)}
+        batch.commit().await()
     }
     fun renameGoal(goal: Goal, title: String) = work {
         require(goal.ownerId == uid)

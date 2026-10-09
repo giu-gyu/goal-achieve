@@ -12,6 +12,7 @@ function Token([string]$uid) {
 }
 function V($value) {
     if ($null -eq $value) { return @{nullValue=$null} }
+    if ($value -is [int] -or $value -is [long]) { return @{integerValue=$value.ToString()} }
     if ($value -is [bool]) { return @{booleanValue=$value} }
     if ($value -is [string]) { return @{stringValue=$value} }
     if ($value -is [System.Collections.IDictionary]) {
@@ -67,6 +68,13 @@ Check 'partner cannot change name' 'bob' 'POST' $commit @{writes=@((WriteDoc "pa
 Check 'owner changes name' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair" $pair))} 200
 $goal = @{ownerId='alice'; title='Walk'; start=$today; end=$null}
 Check 'owner creates goal' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 200
+$goal.order=2
+Check 'owner changes goal order' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 200
+$goal.order=1
+Check 'partner cannot change goal order' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 403
+$goal.order=-1
+Check 'negative goal order denied' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 403
+$goal.order=2
 Check 'partner reads goal' 'bob' 'GET' "$taskBase/pairs/$taskPair/goals/walk" $null 200
 Check 'outsider cannot read goal' 'mallory' 'GET' "$taskBase/pairs/$taskPair/goals/walk" $null 403
 $entry = @{ownerId='alice'; goalId='walk'; date=$today; done=$true}

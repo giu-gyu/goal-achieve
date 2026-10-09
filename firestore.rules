@@ -75,15 +75,18 @@ service cloud.firestore {
       match /goals/{goalId} {
         allow read: if member(pairId);
         allow create: if member(pairId)
-          && request.resource.data.keys().hasOnly(['ownerId', 'title', 'start', 'end'])
+          && request.resource.data.keys().hasOnly(['ownerId', 'title', 'start', 'end', 'order'])
           && request.resource.data.ownerId == request.auth.uid
           && request.resource.data.title is string
           && request.resource.data.title.size() >= 1 && request.resource.data.title.size() <= 60
           && validDate(request.resource.data.start)
           && dateKey(request.resource.data.start) == todayKey()
-          && request.resource.data.end == null;
+          && request.resource.data.end == null
+          && (request.resource.data.get('order', 0) is int && request.resource.data.get('order', 0) >= 0);
         allow update: if member(pairId) && resource.data.ownerId == request.auth.uid
-          && ((request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title'])
+          && ((request.resource.data.diff(resource.data).affectedKeys().hasOnly(['order'])
+            && request.resource.data.order is int && request.resource.data.order >= 0)
+          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title'])
             && request.resource.data.title is string
             && request.resource.data.title.size() >= 1 && request.resource.data.title.size() <= 60)
           || (resource.data.end == null
