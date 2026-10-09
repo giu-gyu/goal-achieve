@@ -56,7 +56,7 @@ internal fun ProfileDialog(vm:DailyViewModel,onDismiss:()->Unit) {
                 Switch(reminder,{reminder=it})
             }
             TextButton(onClick={TimePickerDialog(context,{_,h,m->hour=h;minute=m},hour,minute,true).show()},enabled=reminder) {Text("알림 시간 %02d:%02d (한국 시간)".format(hour,minute))}
-            Text("짝꿍 알림은 앱 실행 중 또는 백그라운드 주기 확인 시 표시됩니다. 절전 상태에서는 알림과 시간 알림이 늦어질 수 있습니다.",fontSize=11.sp,color=Muted)
+            Text("짝꿍 알림은 앱을 열어 둔 동안만 받습니다. 백그라운드 서버 확인은 하지 않습니다. 시간 알림은 절전 상태에서 늦어질 수 있습니다.",fontSize=11.sp,color=Muted)
             TextButton(onClick={
                 if((partner||reminder)&&Build.VERSION.SDK_INT>=33&&context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)permission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 else saveAlerts()

@@ -29,6 +29,8 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
+    override fun onStart() {super.onStart();AppAlerts.foreground=true}
+    override fun onStop() {AppAlerts.foreground=false;super.onStop()}
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
