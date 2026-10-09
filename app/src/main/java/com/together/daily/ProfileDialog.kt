@@ -26,14 +26,14 @@ internal fun ProfileDialog(vm:DailyViewModel,onDismiss:()->Unit) {
     var bio by rememberSaveable(vm.uid,profile.bio) {mutableStateOf(profile.bio)}
     var resolve by rememberSaveable(vm.uid,profile.resolve) {mutableStateOf(profile.resolve)}
     val prefs=remember(vm.uid){AppAlerts.prefs(context,vm.uid)}
-    var partner by rememberSaveable(vm.uid){mutableStateOf(prefs.getBoolean("partner",false))}
+    var partner by rememberSaveable(vm.uid){mutableStateOf(prefs.getBoolean("partnerRecorded",true))}
     var goalChanges by rememberSaveable(vm.uid){mutableStateOf(prefs.getBoolean("goalChanges",false))}
     var reminder by rememberSaveable(vm.uid){mutableStateOf(prefs.getBoolean("reminder",false))}
     var hour by rememberSaveable(vm.uid){mutableIntStateOf(prefs.getInt("hour",21))}
     var minute by rememberSaveable(vm.uid){mutableIntStateOf(prefs.getInt("minute",0))}
     var status by remember {mutableStateOf("")}
     fun saveAlerts() {
-        prefs.edit().putBoolean("partner",partner).putBoolean("goalChanges",goalChanges).putBoolean("reminder",reminder).putInt("hour",hour).putInt("minute",minute).apply()
+        prefs.edit().putBoolean("partnerRecorded",partner).putBoolean("goalChanges",goalChanges).putBoolean("reminder",reminder).putInt("hour",hour).putInt("minute",minute).apply()
         AppAlerts.configure(context,vm.uid,vm.pairId)
         status="알림 설정을 저장했습니다."
     }
@@ -49,7 +49,7 @@ internal fun ProfileDialog(vm:DailyViewModel,onDismiss:()->Unit) {
             Text("저장된 이름: ${vm.names[vm.uid].orEmpty()}",fontSize=11.sp,color=Muted)
             HorizontalDivider()
             Row(verticalAlignment=Alignment.CenterVertically) {
-                Text("짝꿍 오늘 목표 모두 완료 알림",fontSize=12.sp,modifier=Modifier.weight(1f))
+                Text("짝꿍이 오늘 목표를 모두 기록하면 알림",fontSize=12.sp,modifier=Modifier.weight(1f))
                 Switch(partner,{partner=it})
             }
             Row(verticalAlignment=Alignment.CenterVertically) {

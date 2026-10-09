@@ -147,7 +147,7 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
                 val partner=names.keys.firstOrNull {it!=uid}
                 if(partner!=null) {
                     val list=goals.filter {it.ownerId==partner&&it.scheduled(koreaToday())}
-                    AppAlerts.partnerCompleted(getApplication(),uid,partner,names[partner].orEmpty(),list.isNotEmpty()&&list.all {g->entries.any {it.goalId==g.id&&it.date==koreaToday()&&it.done}})
+                    AppAlerts.partnerRecorded(getApplication(),uid,partner,names[partner].orEmpty(),recordingStatus(list,entries,partner,koreaToday()).allRecorded)
                 }
             }
         }

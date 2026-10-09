@@ -7,6 +7,12 @@ import android.content.*
 import android.content.pm.PackageManager
 import android.os.*
 import java.time.*
+import com.google.firebase.FirebaseApp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
+import kotlinx.coroutines.*
+import kotlinx.coroutines.tasks.await
 
 internal object AppAlerts {
     var foreground=false
@@ -37,10 +43,10 @@ internal object AppAlerts {
         if(!next.isAfter(now))next=next.plusDays(1)
         alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,next.toInstant().toEpochMilli(),intent)
     }
-    fun partnerCompleted(c:Context,uid:String,partner:String,name:String,complete:Boolean) {
+    fun partnerRecorded(c:Context,uid:String,partner:String,name:String,complete:Boolean) {
         val p=prefs(c,uid)
-        val key="sent_"+partner+"_"+koreaToday()
-        if(foreground&&p.getBoolean("partner",false)&&complete&&!p.getBoolean(key,false)&&notify(c,702,"${name}님이 오늘 목표를 모두 완료했어요! 🎉"))p.edit().putBoolean(key,true).apply()
+        val key="records_sent_"+partner+"_"+koreaToday()
+        if(foreground&&p.getBoolean("partnerRecorded",true)&&complete&&!p.getBoolean(key,false)&&notify(c,702,"${name}님이 오늘 목표의 완료·미완료를 모두 기록했어요."))p.edit().putBoolean(key,true).apply()
     }
     fun stop(c:Context) {
         c.getSystemService(JobScheduler::class.java).cancel(700)
@@ -64,4 +70,18 @@ class AlertBootReceiver:BroadcastReceiver() {
         val uid=p.getString("uid",null)?:return
         AppAlerts.configure(context,uid,p.getString("pair","").orEmpty())
     }
+}
+
+internal suspend fun fetchDailyRecords(context:Context,uid:String,pairId:String):Triple<Map<String,String>,List<Goal>,List<Entry>> {
+    FirebaseApp.initializeApp(context)
+    require(FirebaseAuth.getInstance().currentUser?.uid==uid)
+    val pair=FirebaseFirestore.getInstance().collection("pairs").document(pairId)
+    val names=(pair.get(Source.SERVER).await().get("names") as? Map<*,*>)?.entries?.associate {it.key.toString() to it.value.toString()}.orEmpty()
+    val goals=pair.collection("goals").get(Source.SERVER).await().documents.mapNotNull {doc ->
+        runCatching {Goal(doc.id,doc.getString("ownerId")!!,doc.getString("title")!!,LocalDate.parse(doc.getString("start")),doc.getString("end")?.let {LocalDate.parse(it)})}.getOrNull()
+    }
+    val entries=pair.collection("entries").whereEqualTo("date",koreaToday().toString()).get(Source.SERVER).await().documents.mapNotNull {doc ->
+        runCatching {Entry(doc.getString("goalId")!!,LocalDate.parse(doc.getString("date")),doc.getBoolean("done")!!)}.getOrNull()
+    }
+    return Triple(names,goals,entries)
 }
