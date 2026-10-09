@@ -41,12 +41,3 @@ fun daySuccessPercent(goals:List<Goal>,entries:List<Entry>,date:LocalDate,today:
     val done=scheduled.count {g->entries.any {it.goalId==g.id&&it.date==date&&it.done}}
     return done*100/scheduled.size
 }
-
-data class DailyRecordingStatus(val total:Int,val recorded:Int) {
-    val allRecorded get()=total>0&&recorded==total
-    val missing get()=total-recorded
-}
-fun recordingStatus(goals:List<Goal>,entries:List<Entry>,ownerId:String,date:LocalDate):DailyRecordingStatus {
-    val scheduled=goals.filter {it.ownerId==ownerId&&it.scheduled(date)}
-    return DailyRecordingStatus(scheduled.size,scheduled.count {goal->entries.any {it.goalId==goal.id&&it.date==date}})
-}

@@ -29,10 +29,9 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
-    override fun onStart() {super.onStart();AppAlerts.foreground=true}
-    override fun onStop() {AppAlerts.foreground=false;super.onStop()}
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        LegacyNotificationCleanup.cancel(this)
         enableEdgeToEdge(
             statusBarStyle=SystemBarStyle.light(android.graphics.Color.TRANSPARENT,android.graphics.Color.TRANSPARENT),
             navigationBarStyle=SystemBarStyle.light(android.graphics.Color.rgb(250,248,245),android.graphics.Color.rgb(250,248,245)))
