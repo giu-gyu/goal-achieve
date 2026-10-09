@@ -187,7 +187,10 @@ internal fun StatsPage(vm:DailyViewModel,today:LocalDate,onLogout:()->Unit) {
             IconButton(onClick={offset++},enabled=offset<0,modifier=Modifier.size(36.dp)) {Mark(Symbol.Next,color=if(offset<0)Ink else Line,description="다음 기간")}
         }
         vm.names.entries.sortedBy {if(it.key==vm.uid)0 else 1}.forEach {member ->
-            val values=vm.goals.filter {it.ownerId==member.key}.map {progress(it,vm.entries,start,end,today)}
+            val ranked=vm.goals.filter {it.ownerId==member.key&&it.start<=minOf(end,today)&&(it.end==null||it.end>=start)}
+                .map {it to progress(it,vm.entries,start,end,today)}
+                .sortedWith(compareByDescending<Pair<Goal,Progress>> {(_,p)->if(p.total==0)-1.0 else p.done.toDouble()/p.total}.thenByDescending {it.second.done}.thenBy {it.first.title})
+            val values=ranked.map {it.second}
             val done=values.sumOf {it.done}
             val missed=values.sumOf {it.missed}
             val blank=values.sumOf {it.unrecorded}
@@ -204,6 +207,14 @@ internal fun StatsPage(vm:DailyViewModel,today:LocalDate,onLogout:()->Unit) {
                     }
                     LinearProgressIndicator(progress={percent/100f},modifier=Modifier.fillMaxWidth().height(4.dp).clip(CircleShape),color=Coral,trackColor=Peach,drawStopIndicator={})
                     Text(if(total==0)"이 기간에 기록할 목표가 없습니다." else "완료 $done · 미완료 $missed · 미기록 $blank",fontSize=11.sp,color=Muted)
+                    ranked.forEachIndexed {index,(goal,p) ->
+                        HorizontalDivider(color=Line)
+                        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                            Text("${index+1}. ${goal.title}",fontSize=12.sp,lineHeight=16.sp,modifier=Modifier.weight(1f))
+                            Spacer(Modifier.width(8.dp))
+                            Text(if(p.total==0)"—" else "${p.done*100/p.total}%",fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=Coral)
+                        }
+                    }
                 }
             }
         }
