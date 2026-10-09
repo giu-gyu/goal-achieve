@@ -48,6 +48,7 @@ class MainActivity : ComponentActivity() {
 private fun DailyApp(vm: DailyViewModel = viewModel()) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var adding by remember { mutableStateOf(false) }
+    var profileOpen by rememberSaveable {mutableStateOf(false)}
     var editing by rememberSaveable { mutableStateOf(false) }
     var celebration by remember { mutableIntStateOf(0) }
     var today by remember { mutableStateOf(koreaToday()) }
@@ -72,7 +73,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
                 Spacer(Modifier.width(10.dp))
                 Text("쏘규 Daily 챌린지",color=Ink,fontSize=20.sp,fontWeight=FontWeight.Bold,letterSpacing=(-.5).sp,modifier=Modifier.weight(1f))
                 if(vm.pairId.isNotEmpty()) {
-                    Box(Modifier.clip(CircleShape).clickable { tab=2 }) { Avatar(vm.names[vm.uid].orEmpty()) }
+                    TextButton(onClick={profileOpen=true},contentPadding=PaddingValues(horizontal=6.dp)) {Text(vm.names[vm.uid].orEmpty(),fontSize=13.sp)}
                 } else Text("WITH YOU",color=Lilac,fontSize=10.sp,fontWeight=FontWeight.SemiBold,letterSpacing=1.sp)
             }
             if(vm.busy) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp),color=Coral,trackColor=Peach)
@@ -108,6 +109,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
         Fireworks(celebration)
         }
     }
+    if(profileOpen&&vm.pairId.isNotEmpty()) ProfileDialog(vm,onDismiss={profileOpen=false})
     if(editing) GoalEditor(vm,onAdd={adding=true},onDismiss={editing=false})
     if(adding) {
         var title by rememberSaveable { mutableStateOf("") }
