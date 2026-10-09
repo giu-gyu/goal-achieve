@@ -121,16 +121,11 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
             text={Column(verticalArrangement=Arrangement.spacedBy(14.dp)) {
                 Text("오늘부터 매일 수행할 목표를 입력하세요.",color=Muted,fontSize=14.sp,lineHeight=22.sp)
                 OutlinedTextField(title,{if(it.length<=60)title=it},singleLine=true,
-                    placeholder={Text("예: 함께 생각하며 30분 걷기",fontSize=13.sp)},shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth())
-                Text("예시",color=Muted,fontSize=12.sp)
-                Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                    listOf("30분 산책","책 10쪽 읽기").forEach { suggestion ->
-                        SuggestionChip(onClick={title=suggestion},label={Text(suggestion,fontSize=12.sp)})
-                    }
-                }
+                    placeholder={Text("목표 이름",fontSize=13.sp)},shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth())
+
             }},
             confirmButton={Button(onClick={vm.addGoal(title);adding=false},enabled=title.isNotBlank()&&!vm.busy,shape=RoundedCornerShape(12.dp)) {Text("추가")}},
-            dismissButton={TextButton(onClick={adding=false}){Text("다음에")}})
+            dismissButton={TextButton(onClick={adding=false}){Text("취소")}})
     }
 
 }
