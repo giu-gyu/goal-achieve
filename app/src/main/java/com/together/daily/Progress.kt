@@ -30,3 +30,14 @@ fun weekStart(date: LocalDate): LocalDate = date.with(TemporalAdjusters.previous
 
 data class DailyMemo(val ownerId:String,val date:LocalDate,val text:String)
 data class MemberProfile(val bio:String="",val resolve:String="")
+
+fun successCount(goal:Goal,entries:List<Entry>,start:LocalDate,end:LocalDate,today:LocalDate):Int =
+    entries.filter {it.goalId==goal.id&&it.done&&it.date>=start&&it.date<=end&&it.date<=today&&goal.scheduled(it.date)}.map {it.date}.distinct().size
+
+fun daySuccessPercent(goals:List<Goal>,entries:List<Entry>,date:LocalDate,today:LocalDate):Int? {
+    if(date>today)return null
+    val scheduled=goals.filter {it.scheduled(date)}
+    if(scheduled.isEmpty())return null
+    val done=scheduled.count {g->entries.any {it.goalId==g.id&&it.date==date&&it.done}}
+    return done*100/scheduled.size
+}
