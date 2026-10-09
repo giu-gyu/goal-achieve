@@ -59,12 +59,15 @@ service cloud.firestore {
           && dateKey(request.resource.data.start) == todayKey()
           && request.resource.data.end == null;
         allow update: if member(pairId) && resource.data.ownerId == request.auth.uid
-          && resource.data.end == null
+          && ((request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title'])
+            && request.resource.data.title is string
+            && request.resource.data.title.size() >= 1 && request.resource.data.title.size() <= 60)
+          || (resource.data.end == null
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['end'])
           && validDate(request.resource.data.end)
           && dateKey(request.resource.data.end) == todayKey()
-          && dateKey(request.resource.data.end) >= dateKey(resource.data.start);
-        allow delete: if false;
+          && dateKey(request.resource.data.end) >= dateKey(resource.data.start)));
+        allow delete: if member(pairId) && resource.data.ownerId == request.auth.uid;
       }
       match /entries/{entryId} {
         function validEntry() {

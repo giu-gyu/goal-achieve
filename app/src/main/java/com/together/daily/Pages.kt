@@ -3,6 +3,8 @@ package com.together.daily
 import android.content.Intent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -64,7 +66,7 @@ internal fun LoginPage(vm:DailyViewModel) {
             trailingIcon={TextButton(onClick={visible=!visible}){Text(if(visible)"숨기기" else "보기",fontSize=11.sp,color=Muted)}},
             shape=RoundedCornerShape(15.dp),modifier=Modifier.fillMaxWidth())
         Spacer(Modifier.height(2.dp))
-        PrimaryAction(if(signup)"우리의 하루 시작하기" else "다시 만나서 반가워요",enabled=!vm.busy&&email.isNotBlank()&&password.length>=6,onClick={vm.login(email,password,signup)})
+        PrimaryAction(if(signup)"쏘규 Daily 챌린지 시작하기" else "다시 만나서 반가워요",enabled=!vm.busy&&email.isNotBlank()&&password.length>=6,onClick={vm.login(email,password,signup)})
         if(!signup) TextButton(onClick={vm.resetPassword(email)},enabled=!vm.busy&&email.isNotBlank(),modifier=Modifier.align(Alignment.CenterHorizontally)) {Text("비밀번호가 기억나지 않아요",fontSize=12.sp,color=Muted)}
     }
     Text("각자의 계정으로 로그인하고,\n초대 코드로 두 사람의 하루를 연결해요.",color=Muted,fontSize=12.sp,lineHeight=20.sp,textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth())
@@ -95,67 +97,69 @@ internal fun ConnectPage(vm:DailyViewModel) {
 }
 
 @Composable
-internal fun HistoryPage(vm:DailyViewModel,date:LocalDate,today:LocalDate,onDate:(LocalDate)->Unit) {
-    var owner by rememberSaveable {mutableIntStateOf(0)}
-    var monthText by rememberSaveable {mutableStateOf(YearMonth.from(date).toString())}
-    val month=YearMonth.parse(monthText)
-    SectionTitle("함께 쌓은 날들","잘한 날도, 쉬어간 날도 우리의 소중한 기록")
+internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
+    var weekOffset by rememberSaveable {mutableLongStateOf(0L)}
+    val start=weekStart(today).plusWeeks(weekOffset)
+    val end=start.plusDays(6)
+    Text("오늘도 화이팅!!",fontSize=22.sp,fontWeight=FontWeight.Bold)
     SoftCard {
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-            Text("${month.year}년 ${month.monthValue}월",fontSize=18.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
-            IconButton(onClick={monthText=month.minusMonths(1).toString()}) {Mark(Symbol.Back,description="이전 달")}
-            IconButton(onClick={monthText=month.plusMonths(1).toString()},enabled=month<YearMonth.from(today)) {Mark(Symbol.Next,color=if(month<YearMonth.from(today))Ink else Line,description="다음 달")}
+            IconButton(onClick={weekOffset--}) {Mark(Symbol.Back,description="전주")}
+            Text("${start.year}.${start.monthValue}.${start.dayOfMonth} – ${end.year}.${end.monthValue}.${end.dayOfMonth}",
+                fontSize=13.sp,fontWeight=FontWeight.SemiBold,textAlign=TextAlign.Center,modifier=Modifier.weight(1f))
+            IconButton(onClick={weekOffset++}) {Mark(Symbol.Next,description="다음주")}
         }
-        Row(Modifier.fillMaxWidth()) {
-            listOf("월","화","수","목","금","토","일").forEach {label ->
-                Text(label,Modifier.weight(1f),color=Muted,fontSize=11.sp,textAlign=TextAlign.Center)
-            }
-        }
-        val offset=month.atDay(1).dayOfWeek.value-1
-        val rows=(offset+month.lengthOfMonth()+6)/7
-        Column(verticalArrangement=Arrangement.spacedBy(3.dp)) {
-            repeat(rows){row ->
-                Row(Modifier.fillMaxWidth()) {
-                    repeat(7){col ->
-                        val n=row*7+col-offset+1
-                        if(n !in 1..month.lengthOfMonth()) Spacer(Modifier.weight(1f).height(43.dp))
-                        else {
-                            val day=month.atDay(n)
-                            val selected=day==date
-                            val records=vm.entries.filter {it.date==day}
-                            val done=records.any {it.done}
-                            Column(Modifier.weight(1f).height(43.dp).clip(RoundedCornerShape(13.dp))
-                                .background(if(selected)Coral else Color.Transparent).clickable(enabled=day<=today){onDate(day)},
-                                horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
-                                Text(n.toString(),fontSize=13.sp,color=if(selected)Color.White else if(day>today)Muted.copy(alpha=.35f)else Ink,fontWeight=if(selected||day==today)FontWeight.Bold else FontWeight.Normal)
-                                Spacer(Modifier.height(5.dp))
-                                Box(Modifier.size(4.dp).background(if(selected)Color.White.copy(alpha=.7f)else if(done)Sage else if(records.isNotEmpty())Lilac else Color.Transparent,CircleShape))
+        TextButton(onClick={weekOffset=0L},modifier=Modifier.align(Alignment.CenterHorizontally)) {Text("이번 주")}
+    }
+    val members=vm.names.entries.sortedBy {if(it.key==vm.uid)0 else 1}
+    members.forEach {member ->
+        WeeklyRecords(vm,member.key,"${member.value} · ${if(member.key==vm.uid) "나" else "짝꿍"}",start,end,today)
+    }
+    if(members.size<2) Text("상대방이 연결되면 주간 기록이 여기에 표시됩니다.",color=Muted,fontSize=12.sp)
+}
+
+@Composable
+private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:LocalDate,end:LocalDate,today:LocalDate) {
+    val goals=vm.goals.filter {it.ownerId==ownerId&&it.start<=end&&(it.end==null||it.end>=start)}
+    val records=vm.entries.associateBy {it.goalId to it.date}
+    val days=(0L..6L).map {start.plusDays(it)}
+    SoftCard {
+        Text(name,fontSize=17.sp,fontWeight=FontWeight.Bold)
+        if(goals.isEmpty()) Text("이 주에 등록된 목표가 없습니다.",color=Muted,fontSize=13.sp)
+        else {
+            Text("좌우로 밀어 월~일 기록을 확인하세요.",color=Muted,fontSize=11.sp)
+            Column(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+                Row(Modifier.height(IntrinsicSize.Min).background(Lavender.copy(alpha=.5f)),verticalAlignment=Alignment.CenterVertically) {
+                    Text("목표",modifier=Modifier.width(160.dp).padding(12.dp),fontWeight=FontWeight.SemiBold,fontSize=13.sp)
+                    days.forEachIndexed {index,day ->
+                        Column(Modifier.width(64.dp).padding(vertical=10.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                            Text(listOf("월","화","수","목","금","토","일")[index],fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=if(day==today)Coral else Ink)
+                            Text("${day.monthValue}/${day.dayOfMonth}",fontSize=10.sp,color=if(day==today)Coral else Muted)
+                        }
+                    }
+                }
+                goals.forEach {goal ->
+                    HorizontalDivider(color=Line)
+                    Row(Modifier.height(IntrinsicSize.Min),verticalAlignment=Alignment.CenterVertically) {
+                        Text(goal.title,modifier=Modifier.width(160.dp).heightIn(min=68.dp).wrapContentHeight().padding(12.dp),fontSize=13.sp,lineHeight=19.sp,fontWeight=FontWeight.Medium)
+                        days.forEach {day ->
+                            val done=records[goal.id to day]?.done
+                            val label=when {
+                                !goal.scheduled(day)->"—"
+                                day>today->"예정"
+                                done==true->"완료"
+                                done==false->"미완료"
+                                else->"미기록"
+                            }
+                            val color=when(label) {"완료"->Sage;"미완료"->Coral;else->Muted}
+                            Box(Modifier.width(64.dp).fillMaxHeight().background(if(day==today)Peach.copy(alpha=.25f) else Color.Transparent),contentAlignment=Alignment.Center) {
+                                Text(label,color=color,fontSize=11.sp,fontWeight=if(done==true)FontWeight.Bold else FontWeight.Normal)
                             }
                         }
                     }
                 }
             }
         }
-        Row(horizontalArrangement=Arrangement.spacedBy(14.dp),verticalAlignment=Alignment.CenterVertically) {
-            Legend("완료한 기록",Sage); Legend("쉬어간 기록",Lilac)
-            Spacer(Modifier.weight(1f))
-            TextButton(onClick={monthText=YearMonth.from(today).toString();onDate(today)},contentPadding=PaddingValues(0.dp)){Text("오늘",fontSize=11.sp)}
-        }
-    }
-    val id=OwnerSwitch(vm,owner){owner=it}
-    Text("${date.monthValue}월 ${date.dayOfMonth}일의 약속",fontSize=17.sp,fontWeight=FontWeight.Bold)
-    val list=vm.goals.filter {it.ownerId==id&&it.scheduled(date)}
-    if(list.isEmpty()) EmptyGoals("이 날은 잠시 여백으로","이 날짜에 정한 목표가 없어요.")
-    list.forEach {goal -> GoalTile(goal,vm.entries.find {it.goalId==goal.id&&it.date==date}?.done,
-        editable=id==vm.uid&&!vm.busy&&date<=today,onRecord={vm.record(goal,date,it)})}
-    Text("내 기록은 언제든 다시 수정할 수 있어요.",color=Muted,fontSize=11.sp)
-}
-
-@Composable
-private fun Legend(text:String,color:Color) {
-    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)) {
-        Box(Modifier.size(5.dp).background(color,CircleShape))
-        Text(text,color=Muted,fontSize=10.sp)
     }
 }
 
@@ -294,7 +298,6 @@ internal fun CouplePage(vm:DailyViewModel,onLogout:()->Unit) {
         InfoRow(Symbol.Heart,"서로의 속도 존중하기","짝꿍의 기록은 함께 볼 수 있어요.\n기록 수정은 각자 자신의 것만 할 수 있어요.")
     }
     TextButton(onClick={logoutDialog=true},enabled=!vm.busy,modifier=Modifier.fillMaxWidth()) {Text(if(vm.demo)"체험 마치기" else "로그아웃",color=Muted,fontSize=12.sp)}
-    Text("오늘의 작은 약속이, 내일의 우리를 만들어요.",color=Lilac,fontSize=11.sp,textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth())
     if(logoutDialog) AlertDialog(onDismissRequest={logoutDialog=false},containerColor=Cream,shape=RoundedCornerShape(28.dp),
         title={Text(if(vm.demo)"체험을 마칠까요?" else "잠시 로그아웃할까요?",fontSize=21.sp,fontWeight=FontWeight.Bold)},
         text={Text(if(vm.demo)"체험 기록은 저장되지 않아요." else "우리의 기록은 안전하게 남아 있어요.\n같은 계정으로 언제든 다시 만나세요.",color=Muted,lineHeight=22.sp)},

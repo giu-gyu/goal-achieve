@@ -70,9 +70,17 @@ Check 'future record denied' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/
 $past = $now.AddDays(-1).ToString('yyyy-MM-dd')
 $entry.date = $past
 Check 'before goal creation denied' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/entries/walk_$past" $entry))} 403
+$goal.title = 'Updated walk'
+Check 'partner cannot rename goal' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 403
+Check 'owner renames goal' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 200
+$goal.title = ''
+Check 'blank title denied' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 403
+$goal.title = 'Updated walk'
 $goal.end = $today
 Check 'partner cannot archive goal' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 403
 Check 'owner archives goal' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 200
 Check 'partner cannot delete record' 'bob' 'DELETE' "$taskBase/pairs/$taskPair/entries/walk_$today" $null 403
 Check 'owner clears record' 'alice' 'DELETE' "$taskBase/pairs/$taskPair/entries/walk_$today" $null 200
+Check 'partner cannot delete goal' 'bob' 'DELETE' "$taskBase/pairs/$taskPair/goals/walk" $null 403
+Check 'owner deletes goal' 'alice' 'DELETE' "$taskBase/pairs/$taskPair/goals/walk" $null 200
 Write-Host "$script:passed security checks passed."

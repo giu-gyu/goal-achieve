@@ -133,6 +133,32 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
             "ownerId" to uid, "title" to title.trim(), "start" to koreaToday().toString(), "end" to null
         )).await()
     }
+    fun renameGoal(goal: Goal, title: String) = work {
+        require(goal.ownerId == uid)
+        require(title.trim().length in 1..60) { "목표는 1~60자로 입력해주세요." }
+        if (demo) {
+            goals = goals.map { if (it.id == goal.id) it.copy(title = title.trim()) else it }
+            return@work
+        }
+        db!!.collection("pairs").document(pairId).collection("goals").document(goal.id)
+            .update("title", title.trim()).await()
+    }
+    fun deleteGoal(goal: Goal) = work {
+        require(goal.ownerId == uid)
+        if (demo) {
+            goals = goals.filterNot { it.id == goal.id }
+            entries = entries.filterNot { it.goalId == goal.id }
+            return@work
+        }
+        val pair = db!!.collection("pairs").document(pairId)
+        val records = pair.collection("entries").whereEqualTo("goalId", goal.id).get().await()
+        records.documents.chunked(450).forEach { chunk ->
+            val batch = db.batch()
+            chunk.forEach { batch.delete(it.reference) }
+            batch.commit().await()
+        }
+        pair.collection("goals").document(goal.id).delete().await()
+    }
     fun archive(goal: Goal) = work {
         require(goal.ownerId == uid)
         if (demo) {
