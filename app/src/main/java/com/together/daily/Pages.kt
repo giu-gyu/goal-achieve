@@ -101,21 +101,21 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
     var weekOffset by rememberSaveable {mutableLongStateOf(0L)}
     val start=weekStart(today).plusWeeks(weekOffset)
     val end=start.plusDays(6)
-    Text("오늘도 화이팅!!",fontSize=22.sp,fontWeight=FontWeight.Bold)
-    SoftCard {
-        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-            IconButton(onClick={weekOffset--}) {Mark(Symbol.Back,description="전주")}
-            Text("${start.year}.${start.monthValue}.${start.dayOfMonth} – ${end.year}.${end.monthValue}.${end.dayOfMonth}",
-                fontSize=13.sp,fontWeight=FontWeight.SemiBold,textAlign=TextAlign.Center,modifier=Modifier.weight(1f))
-            IconButton(onClick={weekOffset++}) {Mark(Symbol.Next,description="다음주")}
-        }
-        TextButton(onClick={weekOffset=0L},modifier=Modifier.align(Alignment.CenterHorizontally)) {Text("이번 주")}
+    Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+    Text("오늘도 화이팅!!",fontSize=18.sp,fontWeight=FontWeight.Bold)
+    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+        IconButton(onClick={weekOffset--},modifier=Modifier.size(40.dp)) {Mark(Symbol.Back,description="전주")}
+        Text("${start.monthValue}/${start.dayOfMonth} – ${end.monthValue}/${end.dayOfMonth} · ${start.year}",
+            fontSize=13.sp,fontWeight=FontWeight.SemiBold,textAlign=TextAlign.Center,modifier=Modifier.weight(1f))
+        IconButton(onClick={weekOffset++},modifier=Modifier.size(40.dp)) {Mark(Symbol.Next,description="다음주")}
+        if(weekOffset!=0L) TextButton(onClick={weekOffset=0L},contentPadding=PaddingValues(horizontal=4.dp),modifier=Modifier.height(40.dp)) {Text("이번 주",fontSize=11.sp)}
     }
     val members=vm.names.entries.sortedBy {if(it.key==vm.uid)0 else 1}
     members.forEach {member ->
         WeeklyRecords(vm,member.key,"${member.value} · ${if(member.key==vm.uid) "나" else "짝꿍"}",start,end,today)
     }
     if(members.size<2) Text("상대방이 연결되면 주간 기록이 여기에 표시됩니다.",color=Muted,fontSize=12.sp)
+    }
 }
 
 @Composable
