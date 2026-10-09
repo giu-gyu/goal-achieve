@@ -105,6 +105,7 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
     private fun observe(id: String) {
         listeners.forEach { it.remove() }; listeners.clear()
         pairId = id
+        AppAlerts.configure(getApplication(),uid,id)
         val pair = db!!.collection("pairs").document(id)
         listeners += pair.addSnapshotListener { snapshot, e ->
             if (e != null) { error = "커플 정보를 불러오지 못했어요."; return@addSnapshotListener }
@@ -131,6 +132,13 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
             entries = snapshot?.documents?.mapNotNull { doc ->
                 runCatching { Entry(doc.getString("goalId")!!, LocalDate.parse(doc.getString("date")), doc.getBoolean("done")!!) }.getOrNull()
             }.orEmpty()
+            if(snapshot?.metadata?.isFromCache==false&&!snapshot.metadata.hasPendingWrites()) {
+                val partner=names.keys.firstOrNull {it!=uid}
+                if(partner!=null) {
+                    val list=goals.filter {it.ownerId==partner&&it.scheduled(koreaToday())}
+                    AppAlerts.partnerCompleted(getApplication(),uid,partner,names[partner].orEmpty(),list.isNotEmpty()&&list.all {g->entries.any {it.goalId==g.id&&it.date==koreaToday()&&it.done}})
+                }
+            }
         }
     }
     fun saveMemo(date:LocalDate,text:String)=work {
@@ -208,7 +216,8 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         if (busy) return
         listeners.forEach { it.remove() }; listeners.clear()
         auth?.signOut(); demo = false; uid = ""; pairId = ""; names = emptyMap(); goals = emptyList(); entries = emptyList()
-        ready = false; offline = false; error = null
+        ready = false; offline = false; error = null; memos=emptyList();profiles=emptyMap()
+        AppAlerts.stop(getApplication())
     }
     fun startDemo() {
         demo = true; uid = "me"; pairId = "demo"; ready = true
