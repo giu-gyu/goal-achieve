@@ -49,6 +49,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var adding by remember { mutableStateOf(false) }
     var editing by rememberSaveable { mutableStateOf(false) }
+    var celebration by remember { mutableIntStateOf(0) }
     var today by remember { mutableStateOf(koreaToday()) }
     val scroll = rememberScrollState()
     val snackbar = remember { SnackbarHostState() }
@@ -60,6 +61,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
     Scaffold(containerColor=Cream,snackbarHost={ SnackbarHost(snackbar) },bottomBar={
         if(vm.pairId.isNotEmpty()) BottomMenu(tab) { tab=it }
     }) { padding ->
+        Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(scroll).padding(horizontal=if(tab==1&&vm.pairId.isNotEmpty())12.dp else 22.dp),
             verticalArrangement=Arrangement.spacedBy(if(tab==1&&vm.pairId.isNotEmpty())8.dp else 22.dp)) {
             Spacer(Modifier.height(1.dp))
@@ -95,7 +97,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
                     if(vm.demo) StatusPill("체험 모드",Lilac,Lavender)
                     else if(vm.offline) StatusPill("연결을 기다리고 있어요 · 기록은 보관 중",Muted,Line)
                     when(tab) {
-                        0 -> TodayPage(vm,today,onEdit={editing=true})
+                        0 -> TodayPage(vm,today,onEdit={editing=true},onCelebrate={celebration++})
                         1 -> HistoryPage(vm,today)
                         2 -> StatsPage(vm,today)
                         3 -> CouplePage(vm,onLogout={vm.logout();tab=0})
@@ -103,6 +105,8 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
                 }
             }
             Spacer(Modifier.height(10.dp))
+        }
+        Fireworks(celebration)
         }
     }
     if(editing) GoalEditor(vm,onAdd={adding=true},onDismiss={editing=false})
@@ -148,11 +152,18 @@ private fun BottomMenu(selected: Int,onSelect:(Int)->Unit) {
 }
 
 @Composable
-private fun TodayPage(vm:DailyViewModel,today:LocalDate,onEdit:()->Unit) {
+private fun TodayPage(vm:DailyViewModel,today:LocalDate,onEdit:()->Unit,onCelebrate:()->Unit) {
     var owner by rememberSaveable { mutableIntStateOf(0) }
     val id=if(owner==0) vm.uid else vm.names.keys.firstOrNull {it!=vm.uid}.orEmpty()
     val list=vm.goals.filter {it.ownerId==id&&it.scheduled(today)}
     val done=list.count {g->vm.entries.any {it.goalId==g.id&&it.date==today&&it.done}}
+    var pendingCelebration by remember(id,today) {mutableStateOf<String?>(null)}
+    LaunchedEffect(done,pendingCelebration,vm.busy,vm.error) {
+        if(pendingCelebration!=null && list.isNotEmpty() && done==list.size && vm.error==null) {
+            pendingCelebration=null
+            onCelebrate()
+        } else if(vm.error!=null) pendingCelebration=null
+    }
     SoftCard(color=Peach.copy(alpha=.65f)) {
         Text(today.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일 E요일",Locale.KOREAN)),color=Ink,fontSize=19.sp,fontWeight=FontWeight.Bold)
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
@@ -164,7 +175,11 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,onEdit:()->Unit) {
     OwnerSwitch(vm,owner){owner=it}
     if(list.isEmpty()) Text("오늘 등록된 목표가 없습니다.",color=Muted,fontSize=14.sp)
     list.forEach {goal -> GoalTile(goal,vm.entries.find {it.goalId==goal.id&&it.date==today}?.done,
-        editable=id==vm.uid&&!vm.busy,onRecord={vm.record(goal,today,it)})}
+        editable=id==vm.uid&&!vm.busy,onRecord={value ->
+            if(value==true&&vm.entries.none {it.goalId==goal.id&&it.date==today&&it.done}) pendingCelebration=goal.id
+            else pendingCelebration=null
+            vm.record(goal,today,value)
+        })}
 }
 
 @Composable
