@@ -59,3 +59,12 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - 로컬 demo-together Firestore 에뮬레이터 검사 48/48 통과. 두 계정의 메모 저장·수정·삭제와 저장 내용 왕복 확인, 새 목표 필드 저장, 외부 계정 차단 확인.
 - Firebase 설정 포함 APK: artifacts/together-daily.apk, 쏘규-Daily-챌린지.apk. package com.together.daily, versionCode 3, versionName 1.2.0. 기존 개발 서명키 사용.
 - 실제 Firebase 서버 규칙 게시·실제 두 계정 저장·휴대폰 설치 및 화면 검증은 이번 작업에서 수행하지 않음.
+
+## 오늘 자동 분류·목표 편집 개선 (2026-10-12)
+
+- 변경 전 현재 상태: ddf5d09. 당시 APK를 Galaxy SM-S928N에 업데이트 완료. 아래 추가 수정본은 휴대폰 연결 해제 이후 작성했으며 실기기에 설치하지 않음.
+- 요청별 커밋: 1 f112b52 (자동 날짜 분류 및 공동 날짜/목표 분류 변경), 2 dc70bf3 (오늘 안내 삭제), 3 12c0a6a (중앙 메모 저장 확인 팝업), 4 0a3c648 (완료/미완료 전체 기록 폭죽), 5 1a0138c (수행 안내 삭제), 6 87ade72 (목표 색상), 7 b6f6264 (1/2/3/4/X 횟수 버튼), 8 36d4514 (순서변경 하단 이동), 9 18f0a86 (목표 수정 여백 축소).
+- assembleDebug + testDebugUnitTest + lintDebug 성공. 단위 테스트 24/24 통과. 새 테스트는 날짜 분류의 하루 한정 변경·휴일 기본값·목표 자격/진행률 반영 및 완료/미완료 혼합 기록 조건을 검증함. Android Lint 오류 0, 기존 의존성 업데이트 권고 경고는 유지.
+- 로컬 demo-together Firestore 에뮬레이터 검사 55/55 통과. 날짜 분류 저장·짝꿍 조회·공동 변경, 외부 계정 접근 차단, 목표 색상 및 null 주당 횟수 저장 왕복 확인. 검증 커밋 f002516.
+- firestore.rules 변경 없이 기존 공동 공간 접근 규칙으로 새 저장 필드를 지원함. 실제 Firebase 데이터 수정 및 규칙 배포는 수행하지 않음.
+- 최종 APK: artifacts/together-daily.apk, 쏘규-Daily-챌린지.apk. 기존 개발 서명 및 package com.together.daily 유지. 실기기에서 새 팝업·폭죽·압축 편집 화면 확인은 미수행.
