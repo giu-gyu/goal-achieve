@@ -140,12 +140,14 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
         var title by rememberSaveable { mutableStateOf("") }
         var schedule by rememberSaveable { mutableStateOf(goalSchedule) }
         var target by rememberSaveable { mutableStateOf<Int?>(null) }
+        var colorIndex by rememberSaveable {mutableIntStateOf(ownGoals.size%GoalPalettes.size)}
         AlertDialog(onDismissRequest={adding=false},containerColor=Cream,shape=RoundedCornerShape(28.dp),
             icon={Mark(Symbol.Leaf,color=Sage,modifier=Modifier.size(28.dp))},
             title={Text("목표 추가",fontWeight=FontWeight.Bold,fontSize=22.sp)},
             text={Column(verticalArrangement=Arrangement.spacedBy(14.dp)) {
                 Text("평일 또는 주말·공휴일 목표를 설정하세요.",color=Muted,fontSize=14.sp,lineHeight=22.sp)
                 GoalSettings(schedule,target,!vm.busy,onSchedule={schedule=it},onTarget={target=it})
+                GoalColorPicker(colorIndex,!vm.busy) {colorIndex=it}
                 OutlinedTextField(title,{if(it.length<=60)title=it},singleLine=true,
                     placeholder={Text("목표 이름",fontSize=13.sp)},shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth())
 
@@ -155,7 +157,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
                     TextButton(onClick={position++},enabled=position<ownGoals.size&&!vm.busy){Text("↓")}
                 }
             }},
-            confirmButton={Button(onClick={vm.addGoal(title,position,schedule,target,onSaved={goalSchedule=schedule;adding=false})},enabled=title.isNotBlank()&&!vm.busy,shape=RoundedCornerShape(12.dp)) {Text("추가")}},
+            confirmButton={Button(onClick={vm.addGoal(title,position,schedule,target,colorIndex=colorIndex,onSaved={goalSchedule=schedule;adding=false})},enabled=title.isNotBlank()&&!vm.busy,shape=RoundedCornerShape(12.dp)) {Text("추가")}},
             dismissButton={TextButton(onClick={adding=false}){Text("취소")}})
     }
 
@@ -236,20 +238,19 @@ private fun GoalEditor(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,o
             val goals=vm.goals.filter {it.ownerId==vm.uid&&it.schedule==schedule}
             if(goals.isEmpty()) Text("등록된 목표가 없습니다.",color=Muted)
             goals.forEach {goal -> key(goal.id) {
+                var colorIndex by rememberSaveable(goal.colorIndex) {mutableIntStateOf(goalColorIndex(goal))}
+                val palette=GoalPalettes[colorIndex]
                 var title by rememberSaveable(goal.title) {mutableStateOf(goal.title)}
 
                 var selectedSchedule by rememberSaveable(goal.schedule) {mutableStateOf(goal.schedule)}
                 var target by rememberSaveable(goal.weeklyTarget) {mutableStateOf(goal.weeklyTarget)}
-                Column(Modifier.fillMaxWidth().background(Color.White,RoundedCornerShape(16.dp)).border(1.dp,Line,RoundedCornerShape(16.dp)).padding(12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                Column(Modifier.fillMaxWidth().background(palette.background,RoundedCornerShape(16.dp)).border(1.dp,palette.accent.copy(alpha=.3f),RoundedCornerShape(16.dp)).padding(12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                     OutlinedTextField(title,{if(it.length<=60)title=it},label={Text("목표 명칭")},singleLine=true,enabled=!vm.busy,modifier=Modifier.fillMaxWidth())
                     GoalSettings(selectedSchedule,target,!vm.busy,onSchedule={selectedSchedule=it},onTarget={target=it})
-                    if(selectedSchedule!=goal.schedule||target!=goal.weeklyTarget) {
-                        Text("횟수 변경은 기존 기록의 달성률에도 적용돼요.",fontSize=11.sp,color=Muted)
-                        TextButton(onClick={vm.configureGoal(goal,selectedSchedule,target)},enabled=!vm.busy) {Text("설정 저장")}
-                    }
+                    GoalColorPicker(colorIndex,!vm.busy) {colorIndex=it}
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         Spacer(Modifier.weight(1f))
-                        TextButton(onClick={vm.renameGoal(goal,title)},enabled=!vm.busy&&title.isNotBlank()&&title.trim()!=goal.title) {Text("저장")}
+                        TextButton(onClick={vm.updateGoal(goal,title,selectedSchedule,target,colorIndex)},enabled=!vm.busy&&title.isNotBlank()&&(title.trim()!=goal.title||selectedSchedule!=goal.schedule||target!=goal.weeklyTarget||colorIndex!=goalColorIndex(goal))) {Text("저장")}
                         TextButton(onClick={deleting=goal},enabled=!vm.busy) {Text("삭제")}
                     }
                 }
@@ -285,10 +286,11 @@ internal fun EmptyGoals(title:String,subtitle:String,onAdd:(()->Unit)?=null) {
 @Composable
 internal fun GoalTile(goal:Goal,done:Boolean?,editable:Boolean,onRecord:(Boolean?)->Unit,onEnd:(()->Unit)?=null) {
     var menu by remember {mutableStateOf(false)}
-    SoftCard {
+    val palette=goalPalette(goal)
+    SoftCard(color=palette.background) {
         Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(42.dp).background(if(done==true)Mint else Lavender.copy(alpha=.65f),RoundedCornerShape(14.dp)),contentAlignment=Alignment.Center) {
-                Mark(if(done==true)Symbol.Check else goalSymbol(goal.title),color=if(done==true)Sage else Lilac)
+            Box(Modifier.size(42.dp).background(palette.accent.copy(alpha=.12f),RoundedCornerShape(14.dp)),contentAlignment=Alignment.Center) {
+                Mark(if(done==true)Symbol.Check else goalSymbol(goal.title),color=palette.accent)
             }
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(5.dp)) {
                 Text(goal.title,fontSize=15.sp,fontWeight=FontWeight.SemiBold,lineHeight=22.sp)

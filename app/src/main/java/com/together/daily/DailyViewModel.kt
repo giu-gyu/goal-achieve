@@ -136,7 +136,7 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
                 runCatching { Goal(doc.id, doc.getString("ownerId")!!, doc.getString("title")!!,
                     LocalDate.parse(doc.getString("start")), doc.getString("end")?.let { LocalDate.parse(it) },doc.getLong("order")?.toInt()?:Int.MAX_VALUE,
                     doc.getString("schedule")?.let { runCatching { GoalSchedule.valueOf(it) }.getOrNull() } ?: GoalSchedule.WEEKDAY,
-                    doc.getLong("weeklyTarget")?.toInt()?.takeIf { it in 1..7 },dateSchedules=dateSchedules) }.getOrNull()
+                    doc.getLong("weeklyTarget")?.toInt()?.takeIf { it in 1..7 },dateSchedules=dateSchedules,colorIndex=doc.getLong("colorIndex")?.toInt()?.takeIf {it in 0..5}) }.getOrNull()
             }?.sortedWith(compareBy<Goal> { it.order }.thenBy { it.start }.thenBy { it.title }).orEmpty()
 
         }
@@ -191,20 +191,20 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         batch.set(pair.collection("profiles").document(uid),mapOf("bio" to bio.trim(),"resolve" to resolve.trim()))
         batch.commit().await()
     }
-    fun addGoal(title:String,position:Int?=null,schedule:GoalSchedule=if(KoreanHolidays.isRestDay(koreaToday())) GoalSchedule.WEEKEND else GoalSchedule.WEEKDAY,weeklyTarget:Int?=null,onSaved:()->Unit={})=work {
+    fun addGoal(title:String,position:Int?=null,schedule:GoalSchedule=if(KoreanHolidays.isRestDay(koreaToday())) GoalSchedule.WEEKEND else GoalSchedule.WEEKDAY,weeklyTarget:Int?=null,colorIndex:Int?=null,onSaved:()->Unit={})=work {
         require(title.trim().length in 1..60) {"목표는 1~60자로 입력해주세요."}
         require(weeklyTarget==null || weeklyTarget in 1..7) { "주당 횟수는 1~7회로 설정해주세요." }
         val own=goals.filter {it.ownerId==uid&&it.schedule==schedule}.toMutableList()
         require(goals.count {it.ownerId==uid}<450) {"목표는 최대 450개까지 등록할 수 있습니다."}
         val index=(position?:own.size).coerceIn(0,own.size)
         val ref=if(demo)null else db!!.collection("pairs").document(pairId).collection("goals").document()
-        val new=Goal(ref?.id?:UUID.randomUUID().toString(),uid,title.trim(),koreaToday(),schedule=schedule,weeklyTarget=weeklyTarget,dateSchedules=dateSchedules)
+        val new=Goal(ref?.id?:UUID.randomUUID().toString(),uid,title.trim(),koreaToday(),schedule=schedule,weeklyTarget=weeklyTarget,dateSchedules=dateSchedules,colorIndex=colorIndex?:own.size%6)
         own.add(index,new)
         val ordered=own.mapIndexed {i,g->g.copy(order=i)}
         if(demo) {goals=goals.filterNot {it.ownerId==uid&&it.schedule==schedule}+ordered;onSaved();return@work}
         val batch=db!!.batch()
         ordered.forEach {g ->
-            if(g.id==new.id)batch.set(ref!!,mapOf("ownerId" to uid,"title" to g.title,"start" to g.start.toString(),"end" to null,"order" to g.order,"schedule" to g.schedule.name,"weeklyTarget" to g.weeklyTarget))
+            if(g.id==new.id)batch.set(ref!!,mapOf("ownerId" to uid,"title" to g.title,"start" to g.start.toString(),"end" to null,"order" to g.order,"schedule" to g.schedule.name,"weeklyTarget" to g.weeklyTarget,"colorIndex" to g.colorIndex))
             else batch.update(ref!!.parent.document(g.id),"order",g.order)
         }
         batch.commit().await()
@@ -250,10 +250,18 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         db!!.collection("pairs").document(pairId).collection("goals").document(goal.id)
             .update("title", title.trim()).await()
     }
+    fun updateGoal(goal:Goal,title:String,schedule:GoalSchedule,weeklyTarget:Int?,colorIndex:Int)=work {
+        require(goal.ownerId==uid&&title.trim().length in 1..60)
+        require(weeklyTarget==null||weeklyTarget in 1..7)
+        require(colorIndex in 0..5)
+        if(!demo) db!!.collection("pairs").document(pairId).collection("goals").document(goal.id)
+            .update(mapOf("title" to title.trim(),"schedule" to schedule.name,"weeklyTarget" to weeklyTarget,"colorIndex" to colorIndex)).await()
+        goals=goals.map {if(it.id==goal.id)it.copy(title=title.trim(),schedule=schedule,weeklyTarget=weeklyTarget,colorIndex=colorIndex) else it}
+    }
     fun configureGoal(goal:Goal,schedule:GoalSchedule,weeklyTarget:Int?) = work {
         require(goal.ownerId==uid && (weeklyTarget==null || weeklyTarget in 1..7))
         if(demo) {
-            goals=goals.map {if(it.id==goal.id) it.copy(schedule=schedule,weeklyTarget=weeklyTarget,dateSchedules=dateSchedules) else it}
+            goals=goals.map {if(it.id==goal.id) it.copy(schedule=schedule,weeklyTarget=weeklyTarget) else it}
         } else {
             db!!.collection("pairs").document(pairId).collection("goals").document(goal.id)
                 .update(mapOf("schedule" to schedule.name,"weeklyTarget" to weeklyTarget)).await()
