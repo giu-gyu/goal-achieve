@@ -6,6 +6,11 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -55,6 +60,11 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
     var profileOpen by rememberSaveable {mutableStateOf(false)}
     var editing by rememberSaveable { mutableStateOf(false) }
     var celebration by remember { mutableIntStateOf(0) }
+    var notice by remember {mutableStateOf<String?>(null)}
+    var noticeTrigger by remember {mutableIntStateOf(0)}
+    LaunchedEffect(noticeTrigger) {
+        if(notice!=null) {kotlinx.coroutines.delay(1800);notice=null}
+    }
     var today by remember { mutableStateOf(koreaToday()) }
     val scroll = rememberScrollState()
     val snackbar = remember { SnackbarHostState() }
@@ -102,7 +112,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
                     if(vm.demo) StatusPill("체험 모드",Lilac,Lavender)
                     else if(vm.offline) StatusPill("연결을 기다리고 있어요 · 기록은 보관 중",Muted,Line)
                     when(tab) {
-                        0 -> TodayPage(vm,today,vm.scheduleFor(today),onEdit={goalSchedule=vm.scheduleFor(today);editing=true},onCelebrate={celebration++})
+                        0 -> TodayPage(vm,today,vm.scheduleFor(today),onEdit={goalSchedule=vm.scheduleFor(today);editing=true},onCelebrate={celebration++},onMemoSaved={notice=it;noticeTrigger++})
                         1 -> HistoryPage(vm,today)
                         2,3 -> StatsPage(vm,today,onLogout={vm.logout();tab=0})
                     }
@@ -111,6 +121,15 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
             Spacer(Modifier.height(10.dp))
         }
         Fireworks(celebration)
+        AnimatedVisibility(visible=notice!=null,modifier=Modifier.align(Alignment.Center),
+            enter=fadeIn()+scaleIn(initialScale=.92f),exit=fadeOut()+scaleOut(targetScale=.96f)) {
+            Surface(shape=RoundedCornerShape(20.dp),color=Ink.copy(alpha=.94f),shadowElevation=8.dp) {
+                Row(Modifier.padding(horizontal=20.dp,vertical=15.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                    Mark(Symbol.Check,color=Mint,modifier=Modifier.size(20.dp))
+                    Text(notice?:"메모를 저장했어요",color=Color.White,fontSize=14.sp,fontWeight=FontWeight.Medium)
+                }
+            }
+        }
         }
     }
     if(profileOpen&&vm.pairId.isNotEmpty()) ProfileDialog(vm,onDismiss={profileOpen=false})
@@ -162,7 +181,7 @@ private fun BottomMenu(selected: Int,onSelect:(Int)->Unit) {
 }
 
 @Composable
-private fun TodayPage(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,onEdit:()->Unit,onCelebrate:()->Unit) {
+private fun TodayPage(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,onEdit:()->Unit,onCelebrate:()->Unit,onMemoSaved:(String)->Unit) {
     var owner by rememberSaveable { mutableIntStateOf(0) }
     val id=if(owner==0) vm.uid else vm.names.keys.firstOrNull {it!=vm.uid}.orEmpty()
     val list=vm.goals.filter {it.ownerId==id&&it.schedule==schedule&&it.start<=today&&(it.end==null||it.end>=today)}
@@ -201,9 +220,9 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,on
         OutlinedTextField(draft.text,{if(it.length<=2000) {draft=draft.copy(text=it);vm.editMemoDraft(today,it)}},placeholder={Text("오늘의 메모")},minLines=2,maxLines=5,modifier=Modifier.fillMaxWidth())
         TextButton(onClick={
             val submitted = draft.text
-            vm.saveMemo(today,submitted,onSaved={draft=draft.confirmed(submitted)})
+            vm.saveMemo(today,submitted,onSaved={draft=draft.confirmed(submitted);onMemoSaved(if(submitted.isBlank())"메모를 삭제했어요" else "메모를 저장했어요")})
         },enabled=!vm.busy&&draft.text.trim()!=saved,modifier=Modifier.align(Alignment.End)) {Text("메모 저장")}
-        vm.memoStatus?.let { Text(it,fontSize=12.sp,color=Muted) }
+        vm.memoStatus?.takeUnless {it=="메모를 저장했어요."||it=="메모를 삭제했어요."}?.let { Text(it,fontSize=12.sp,color=Muted) }
     }
 
 }
