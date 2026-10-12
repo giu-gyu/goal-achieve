@@ -55,7 +55,8 @@ fun progress(goal: Goal, entries: List<Entry>, start: LocalDate, end: LocalDate,
 fun weekStart(date: LocalDate): LocalDate = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 
 data class DailyMemo(val ownerId:String,val date:LocalDate,val text:String)
-data class MemberProfile(val bio:String="",val resolve:String="")
+enum class ProfileGender { MALE, FEMALE }
+data class MemberProfile(val bio:String="",val resolve:String="",val gender:ProfileGender?=null)
 
 fun successCount(goal:Goal,entries:List<Entry>,start:LocalDate,end:LocalDate,today:LocalDate):Int =
     entries.filter {it.goalId==goal.id&&it.done&&it.date>=start&&it.date<=end&&it.date<=today&&goal.scheduled(it.date)}.map {it.date}.distinct().size

@@ -108,7 +108,7 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
     if(weekOffset!=0L) TextButton(onClick={weekOffset=0L},contentPadding=PaddingValues(4.dp),modifier=Modifier.align(Alignment.CenterHorizontally).height(30.dp)) {Text(if(monthly)"이번 달" else "이번 주",fontSize=11.sp)}
     val members=vm.names.entries.sortedBy {if(it.key==vm.uid)0 else 1}
     GoalSchedule.entries.forEach { schedule ->
-        val palette=recordPalette(schedule)
+        val palette=sectionPalette(schedule)
         Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(24.dp),color=palette.background,
             border=androidx.compose.foundation.BorderStroke(1.dp,palette.border)) {
             Column(Modifier.padding(horizontal=12.dp,vertical=16.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
@@ -123,13 +123,14 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
                 }
                 members.forEachIndexed {index,member ->
                     if(index>0) HorizontalDivider(color=palette.border)
+                    val memberPalette=recordPalette(vm.profiles[member.key]?.gender)
                     WeeklyRecords(vm,member.key,"${member.value} · ${if(member.key==vm.uid) "나" else "짝꿍"}",start,end,today,schedule)
                     val memos=vm.memos.filter {
                         it.ownerId==member.key&&it.date>=start&&it.date<=end&&vm.scheduleFor(it.date)==schedule&&it.text.isNotBlank()
                     }.sortedBy {it.date}
                     if(memos.isNotEmpty()) {
                         Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                            memos.forEach {memo->RecordMemoCard(memo,palette)}
+                            memos.forEach {memo->RecordMemoCard(memo,memberPalette)}
                         }
                     }
                 }
@@ -144,9 +145,16 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
 
 private data class RecordPalette(val accent:Color,val background:Color,val header:Color,val border:Color,val cell:Color)
 
-private fun recordPalette(schedule:GoalSchedule)=if(schedule==GoalSchedule.WEEKDAY)
+private fun recordPalette(gender:ProfileGender?)=when(gender) {
+ProfileGender.MALE ->
     RecordPalette(Color(0xFF315F85),Color(0xFFEFF6FC),Color(0xFFDCEAF7),Color(0xFFBFD4E6),Color(0xFFF9FCFF))
-else RecordPalette(Color(0xFF72528D),Color(0xFFF5F0FA),Color(0xFFE8DDF2),Color(0xFFD4C3E3),Color(0xFFFCFAFF))
+ProfileGender.FEMALE -> RecordPalette(Color(0xFF72528D),Color(0xFFF5F0FA),Color(0xFFE8DDF2),Color(0xFFD4C3E3),Color(0xFFFCFAFF))
+null -> RecordPalette(Ink,Color(0xFFF4F5F6),Color(0xFFE9ECF0),Color(0xFFD3D9E0),Color(0xFFFAFBFC))
+}
+
+private fun sectionPalette(schedule:GoalSchedule)=if(schedule==GoalSchedule.WEEKDAY)
+    RecordPalette(Ink,Color(0xFFFAF8F5),Color.White,Color(0xFFE3DFDA),Color.White)
+else RecordPalette(Ink,Color(0xFFF0F3F6),Color.White,Color(0xFFD5DDE5),Color.White)
 
 @Composable
 private fun RecordMemoCard(memo:DailyMemo,palette:RecordPalette) {
@@ -158,7 +166,7 @@ private fun RecordMemoCard(memo:DailyMemo,palette:RecordPalette) {
 }
 @Composable
 private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:LocalDate,end:LocalDate,today:LocalDate,schedule:GoalSchedule) {
-    val palette=recordPalette(schedule)
+    val palette=recordPalette(vm.profiles[ownerId]?.gender)
     val goals=vm.goals.filter {it.ownerId==ownerId&&it.schedule==schedule&&it.start<=end&&(it.end==null||it.end>=start)}
     val records=vm.entries.associateBy {it.goalId to it.date}
     val days=generateSequence(start){it.plusDays(1)}.takeWhile {it<=end}.filter {vm.scheduleFor(it)==schedule}.toList()

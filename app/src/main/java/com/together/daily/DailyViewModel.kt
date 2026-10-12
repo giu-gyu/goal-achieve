@@ -121,7 +121,7 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         }
         listeners += pair.collection("profiles").addSnapshotListener {snapshot,e ->
             if(e!=null) {error="프로필을 불러오지 못했습니다. Firebase 규칙을 확인하세요.";return@addSnapshotListener}
-            profiles=snapshot?.documents?.associate {it.id to MemberProfile(it.getString("bio").orEmpty(),it.getString("resolve").orEmpty())}.orEmpty()
+            profiles=snapshot?.documents?.associate {it.id to MemberProfile(it.getString("bio").orEmpty(),it.getString("resolve").orEmpty(),it.getString("gender")?.let {value->runCatching {ProfileGender.valueOf(value)}.getOrNull()})}.orEmpty()
         }
         listeners += pair.collection("daySchedules").addSnapshotListener {snapshot,e ->
             if(e!=null) {error="날짜 분류를 불러오지 못했어요.";return@addSnapshotListener}
@@ -182,13 +182,13 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         dateSchedules=dateSchedules+(date to schedule)
         goals=goals.map {it.copy(dateSchedules=dateSchedules)}
     }
-    fun saveProfile(name:String,bio:String,resolve:String)=work {
+    fun saveProfile(name:String,bio:String,resolve:String,gender:ProfileGender?=profiles[uid]?.gender)=work {
         require(name.trim().length in 1..20&&bio.length<=200&&resolve.length<=200)
-        if(demo) {names=names+(uid to name.trim());profiles=profiles+(uid to MemberProfile(bio,resolve));return@work}
+        if(demo) {names=names+(uid to name.trim());profiles=profiles+(uid to MemberProfile(bio,resolve,gender));return@work}
         val pair=db!!.collection("pairs").document(pairId)
         val batch=db.batch()
         batch.update(pair,com.google.firebase.firestore.FieldPath.of("names",uid),name.trim())
-        batch.set(pair.collection("profiles").document(uid),mapOf("bio" to bio.trim(),"resolve" to resolve.trim()))
+        batch.set(pair.collection("profiles").document(uid),mapOf("bio" to bio.trim(),"resolve" to resolve.trim(),"gender" to gender?.name))
         batch.commit().await()
     }
     fun addGoal(title:String,position:Int?=null,schedule:GoalSchedule=if(KoreanHolidays.isRestDay(koreaToday())) GoalSchedule.WEEKEND else GoalSchedule.WEEKDAY,weeklyTarget:Int?=null,colorIndex:Int?=null,onSaved:()->Unit={})=work {
