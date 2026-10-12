@@ -14,6 +14,9 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -325,28 +328,28 @@ private fun RecordButton(text:String,selected:Boolean,color:Color,bg:Color,symbo
 
 @Composable
 private fun GoalSettings(schedule:GoalSchedule,target:Int?,enabled:Boolean,onSchedule:(GoalSchedule)->Unit,onTarget:(Int?)->Unit,showSchedule:Boolean=true) {
-    Column(verticalArrangement=Arrangement.spacedBy(5.dp)) {
-        if(showSchedule) {
-        Row(verticalAlignment=Alignment.CenterVertically) {
+    Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
+        if(showSchedule) Row(verticalAlignment=Alignment.CenterVertically) {
             Text("목표 분류",fontSize=12.sp,modifier=Modifier.weight(1f))
             GoalSchedulePicker(schedule,enabled,onSchedule)
         }
-        }
-        Row(verticalAlignment=Alignment.CenterVertically) {
-            Text("주당 횟수 설정",fontSize=12.sp,modifier=Modifier.weight(1f))
-            Switch(checked=target!=null,onCheckedChange={onTarget(if(it)2 else null)},enabled=enabled)
-        }
-        if(target!=null) {
-            Row(verticalAlignment=Alignment.CenterVertically) {
-                Text("일주일에 ${target}회",fontSize=13.sp,modifier=Modifier.weight(1f))
-                TextButton(onClick={onTarget(target-1)},enabled=enabled&&target>1){Text("−")}
-                TextButton(onClick={onTarget(target+1)},enabled=enabled&&target<7){Text("+")}
+        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            Text("주당 횟수 설정",fontSize=11.sp,color=Muted)
+            Row(Modifier.weight(1f),horizontalArrangement=Arrangement.spacedBy(3.dp)) {
+                listOf<Int?>(1,2,3,4,null).forEach {value ->
+                    val selected=target==value
+                    Box(Modifier.weight(1f).height(32.dp).clip(RoundedCornerShape(8.dp))
+                        .background(if(selected)Coral else Color.White.copy(alpha=.7f))
+                        .selectable(selected=selected,enabled=enabled,role=androidx.compose.ui.semantics.Role.RadioButton,onClick={onTarget(value)})
+                        .semantics {contentDescription=if(value==null)"주당 횟수 비활성화" else "주당 ${value}회"},contentAlignment=Alignment.Center) {
+                        Text(value?.toString()?:"X",fontSize=12.sp,color=if(selected)Color.White else Muted,fontWeight=FontWeight.SemiBold)
+                    }
+                }
             }
-            Text("월~일 기준 · 하루 완료 1회 · 초과 달성은 100%\n선택한 분류의 날짜에만 완료를 기록해요.",fontSize=11.sp,color=Muted)
         }
+        if(target!=null&&target>4) Text("기존 설정: 주 ${target}회",fontSize=11.sp,color=Muted)
     }
 }
-
 @Composable
 private fun GoalSchedulePicker(schedule:GoalSchedule,enabled:Boolean,onSelect:(GoalSchedule)->Unit) {
     var expanded by remember {mutableStateOf(false)}
