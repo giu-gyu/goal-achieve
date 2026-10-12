@@ -34,8 +34,8 @@ internal fun ProfileDialog(vm:DailyViewModel,onDismiss:()->Unit) {
             Segments(listOf("남자","여자","미설정"),when(gender) {ProfileGender.MALE->0;ProfileGender.FEMALE->1;null->2},verticalPadding=8.dp) {
                 gender=when(it) {0->ProfileGender.MALE;1->ProfileGender.FEMALE;else->null}
             }
-            if(gender!=null) {
-                Text("인물 이모티콘",fontSize=12.sp,color=Muted)
+            run {
+                Text("감정 · 동작 이모티콘",fontSize=12.sp,color=Muted)
                 MemberEmojiStyles.indices.toList().chunked(4).forEach {indices ->
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
                         indices.forEach {index ->
@@ -43,9 +43,9 @@ internal fun ProfileDialog(vm:DailyViewModel,onDismiss:()->Unit) {
                             Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
                                 .background(if(index==emojiStyle)Lavender else Color.White)
                                 .selectable(selected=index==emojiStyle,enabled=!vm.busy,role=Role.RadioButton,onClick={emojiStyle=index})
-                                .semantics {contentDescription="${if(gender==ProfileGender.MALE) "남자" else "여자"} ${style.label}"}
+                                .semantics {contentDescription=style.label}
                                 .padding(vertical=7.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(3.dp)) {
-                                Text(if(gender==ProfileGender.MALE)style.male else style.female,fontSize=24.sp)
+                                Text(memberEmoji(MemberProfile(gender=gender,emojiStyle=index)),fontSize=24.sp)
                                 Text(style.label,fontSize=10.sp,color=Muted)
                             }
                         }
