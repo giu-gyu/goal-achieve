@@ -129,7 +129,7 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
                     }.sortedBy {it.date}
                     if(memos.isNotEmpty()) {
                         Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                            memos.forEach {memo->RecordMemoCard(memo,member.value,member.key==vm.uid,palette)}
+                            memos.forEach {memo->RecordMemoCard(memo,palette)}
                         }
                     }
                 }
@@ -149,21 +149,11 @@ private fun recordPalette(schedule:GoalSchedule)=if(schedule==GoalSchedule.WEEKD
 else RecordPalette(Color(0xFF72528D),Color(0xFFF5F0FA),Color(0xFFE8DDF2),Color(0xFFD4C3E3),Color(0xFFFCFAFF))
 
 @Composable
-private fun RecordMemoCard(memo:DailyMemo,name:String,own:Boolean,palette:RecordPalette) {
-    Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp),color=Color.White,
+private fun RecordMemoCard(memo:DailyMemo,palette:RecordPalette) {
+    Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(10.dp),color=Color.White,
         border=androidx.compose.foundation.BorderStroke(1.dp,palette.border)) {
-        Row(Modifier.padding(12.dp),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-            Box(Modifier.width(3.dp).height(32.dp).background(palette.accent,RoundedCornerShape(50)))
-            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    Text(memo.date.format(java.time.format.DateTimeFormatter.ofPattern("M월 d일 (E)",java.util.Locale.KOREAN)),
-                        fontSize=12.sp,fontWeight=FontWeight.Bold,color=palette.accent,modifier=Modifier.weight(1f))
-                    Text(if(own)"나의 메모" else "${name}의 메모",fontSize=10.sp,color=palette.accent,
-                        modifier=Modifier.background(palette.background,RoundedCornerShape(50)).padding(horizontal=8.dp,vertical=4.dp))
-                }
-                Text(memo.text,fontSize=13.sp,lineHeight=21.sp,color=Ink)
-            }
-        }
+        Text("${memo.date.format(java.time.format.DateTimeFormatter.ofPattern("M/d (E)",java.util.Locale.KOREAN))}  ${memo.text}",
+            modifier=Modifier.padding(horizontal=10.dp,vertical=7.dp),fontSize=12.sp,lineHeight=18.sp,color=Ink)
     }
 }
 @Composable
