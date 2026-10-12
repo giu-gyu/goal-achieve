@@ -51,8 +51,8 @@ internal fun GoalOrderDialog(vm:DailyViewModel,schedule:GoalSchedule,onDismiss:(
                             val active=draggedId==goal.id
                             val offset=listState.layoutInfo.visibleItemsInfo.firstOrNull {it.key==goal.id}?.offset?:0
                             Box(Modifier.fillMaxWidth().zIndex(if(active)1f else 0f),contentAlignment=Alignment.Center) {
-                                Surface(shape=RoundedCornerShape(16.dp),color=goalPalette(goal).background,
-                                    border=BorderStroke(1.dp,if(active)goalPalette(goal).accent else goalPalette(goal).accent.copy(alpha=.25f)),
+                                Surface(shape=RoundedCornerShape(16.dp),color=MaterialTheme.colorScheme.surface,
+                                    border=BorderStroke(1.dp,if(active)Coral else Line),
                                     modifier=Modifier.width(cardWidth)
                                         .graphicsLayer {translationY=if(active)draggedTop-offset else 0f}
                                         .pointerInput(goal.id,vm.busy) {

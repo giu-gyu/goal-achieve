@@ -188,7 +188,7 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
             }
             goals.forEach {goal ->
                 Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-                    Box(Modifier.weight(3f).fillMaxHeight().background(goalPalette(goal).background).border(.5.dp,palette.border).padding(4.dp),contentAlignment=Alignment.CenterStart) {Text(listOf(goal.title,goal.frequencyLabel).filter {it.isNotBlank()}.joinToString("\n"),fontSize=12.sp,lineHeight=15.sp)}
+                    Box(Modifier.weight(3f).fillMaxHeight().background(palette.cell).border(.5.dp,palette.border).padding(4.dp),contentAlignment=Alignment.CenterStart) {Text(listOf(goal.title,goal.frequencyLabel).filter {it.isNotBlank()}.joinToString("\n"),fontSize=12.sp,lineHeight=15.sp)}
                     days.forEach {day ->
                         val done=records[goal.id to day]?.done
                         val applicable=goal.scheduled(day)&&day<=today
@@ -258,7 +258,7 @@ internal fun StatsPage(vm:DailyViewModel,today:LocalDate,onLogout:()->Unit) {
                     ranked.forEachIndexed {index,(goal,p) ->
                         HorizontalDivider(color=Line)
                         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                            Text(listOf("${index+1}. ${goal.title}",goal.frequencyLabel).filter {it.isNotBlank()}.joinToString(" · "),color=goalPalette(goal).accent,fontSize=12.sp,lineHeight=16.sp,modifier=Modifier.weight(1f))
+                            Text(listOf("${index+1}. ${goal.title}",goal.frequencyLabel).filter {it.isNotBlank()}.joinToString(" · "),color=Ink,fontSize=12.sp,lineHeight=16.sp,modifier=Modifier.weight(1f))
                             Spacer(Modifier.width(8.dp))
                             Text(if(p.total==0)"—" else "${p.percent}%",fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=Coral)
                         }
