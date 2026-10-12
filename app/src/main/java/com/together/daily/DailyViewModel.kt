@@ -284,16 +284,16 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         db!!.collection("pairs").document(pairId).collection("goals").document(goal.id)
             .update("end", koreaToday().toString()).await()
     }
-    fun record(goal: Goal, date: LocalDate, done: Boolean?) = work {
+    fun record(goal: Goal, date: LocalDate, done: Boolean?,onSaved:()->Unit={}) = work {
         require(goal.ownerId == uid && goal.scheduled(date) && date <= koreaToday())
-        if (demo) {
-            entries = entries.filterNot { it.goalId == goal.id && it.date == date } +
-                (if (done == null) emptyList() else listOf(Entry(goal.id, date, done)))
-            return@work
+        if (!demo) {
+            val ref = db!!.collection("pairs").document(pairId).collection("entries").document(goal.id + "_" + date)
+            if (done == null) ref.delete().await()
+            else ref.set(mapOf("ownerId" to uid, "goalId" to goal.id, "date" to date.toString(), "done" to done)).await()
         }
-        val ref = db!!.collection("pairs").document(pairId).collection("entries").document(goal.id + "_" + date)
-        if (done == null) ref.delete().await()
-        else ref.set(mapOf("ownerId" to uid, "goalId" to goal.id, "date" to date.toString(), "done" to done)).await()
+        entries = entries.filterNot { it.goalId == goal.id && it.date == date } +
+            (if (done == null) emptyList() else listOf(Entry(goal.id, date, done)))
+        onSaved()
     }
     fun logout() {
         if (busy) return

@@ -186,13 +186,6 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,on
     val id=if(owner==0) vm.uid else vm.names.keys.firstOrNull {it!=vm.uid}.orEmpty()
     val list=vm.goals.filter {it.ownerId==id&&it.schedule==schedule&&it.start<=today&&(it.end==null||it.end>=today)}
     val done=list.count {g->vm.entries.any {it.goalId==g.id&&it.date==today&&it.done}}
-    var pendingCelebration by remember(id,today) {mutableStateOf<String?>(null)}
-    LaunchedEffect(done,pendingCelebration,vm.busy,vm.error) {
-        if(pendingCelebration!=null && list.isNotEmpty() && done==list.size && vm.error==null) {
-            pendingCelebration=null
-            onCelebrate()
-        } else if(vm.error!=null) pendingCelebration=null
-    }
     SoftCard(color=Peach.copy(alpha=.65f)) {
         Text(today.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일 E요일",Locale.KOREAN)),color=Ink,fontSize=19.sp,fontWeight=FontWeight.Bold)
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
@@ -206,9 +199,10 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,on
     if(list.isEmpty()) Text("오늘 등록된 목표가 없습니다.",color=Muted,fontSize=14.sp)
     list.forEach {goal -> GoalTile(goal,vm.entries.find {it.goalId==goal.id&&it.date==today}?.done,
         editable=id==vm.uid&&!vm.busy&&goal.scheduled(today),onRecord={value ->
-            if(value==true&&vm.entries.none {it.goalId==goal.id&&it.date==today&&it.done}) pendingCelebration=goal.id
-            else pendingCelebration=null
-            vm.record(goal,today,value)
+            val previouslyRecorded=allGoalsRecorded(list,vm.entries,today)
+            vm.record(goal,today,value,onSaved={
+                if(value!=null&&!previouslyRecorded&&allGoalsRecorded(list,vm.entries,today)) onCelebrate()
+            })
         })}
     val saved=vm.memos.firstOrNull {it.ownerId==vm.uid&&it.date==today}?.text.orEmpty()
     var draft by rememberSaveable(vm.uid,today.toString(),stateSaver=Saver<MemoDraft,List<String>>(

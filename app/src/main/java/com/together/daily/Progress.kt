@@ -67,3 +67,6 @@ fun daySuccessPercent(goals:List<Goal>,entries:List<Entry>,date:LocalDate,today:
     val done=scheduled.count {g->entries.any {it.goalId==g.id&&it.date==date&&it.done}}
     return done*100/scheduled.size
 }
+
+fun allGoalsRecorded(goals:List<Goal>,entries:List<Entry>,date:LocalDate):Boolean =
+    goals.isNotEmpty()&&goals.all {goal->entries.any {it.goalId==goal.id&&it.date==date}}
