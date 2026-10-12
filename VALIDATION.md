@@ -86,3 +86,5 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - ce77fd3: 목표 색상 설정·모델·팔레트·저장/조회 및 개별 카드 적용 제거. 기록의 성별 테이블 색상 유지. 원격 기존 색상 필드 삭제 없음.
 - assembleDebug + testDebugUnitTest + lintDebug 성공. 기존 단위 테스트 24/24 통과, Lint 오류 0. 실기기 설치·UI 검증은 미수행.
 - 최신 artifacts/together-daily.apk 및 쏘규-Daily-챌린지.apk 갱신.
+
+주당 횟수 기본 숨김 (8149bbc): 추가·수정 모두 기본 접힘, 설정 버튼으로 펼침/접힘, X 선택 시 OFF 및 접힘. 기존 저장 횟수 유지. assembleDebug/testDebugUnitTest/lintDebug 성공, 단위 테스트 24개 통과, 실기기 설치·터치 검증 미수행.
