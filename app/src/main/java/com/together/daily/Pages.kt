@@ -125,7 +125,7 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
                     if(index>0) HorizontalDivider(color=palette.border)
                     WeeklyRecords(vm,member.key,"${member.value} · ${if(member.key==vm.uid) "나" else "짝꿍"}",start,end,today,schedule)
                     val memos=vm.memos.filter {
-                        it.ownerId==member.key&&it.date>=start&&it.date<=end&&schedule.includes(it.date)&&it.text.isNotBlank()
+                        it.ownerId==member.key&&it.date>=start&&it.date<=end&&vm.scheduleFor(it.date)==schedule&&it.text.isNotBlank()
                     }.sortedBy {it.date}
                     if(memos.isNotEmpty()) {
                         Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -171,7 +171,7 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
     val palette=recordPalette(schedule)
     val goals=vm.goals.filter {it.ownerId==ownerId&&it.schedule==schedule&&it.start<=end&&(it.end==null||it.end>=start)}
     val records=vm.entries.associateBy {it.goalId to it.date}
-    val days=generateSequence(start){it.plusDays(1)}.takeWhile {it<=end}.filter {schedule.includes(it)}.toList()
+    val days=generateSequence(start){it.plusDays(1)}.takeWhile {it<=end}.filter {vm.scheduleFor(it)==schedule}.toList()
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)) {
         Text(name,fontSize=14.sp,fontWeight=FontWeight.Bold,color=palette.accent)
         if(goals.isEmpty()) Text("이 기간에 등록된 목표가 없습니다.",color=Muted,fontSize=12.sp)
