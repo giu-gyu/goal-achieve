@@ -259,9 +259,10 @@ private fun GoalEditor(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,o
                 }
             }}
             OutlinedButton(onClick=onAdd,enabled=!vm.busy,modifier=Modifier.fillMaxWidth()) {Text("목표 추가")}
+            OutlinedButton(onClick={reordering=true},enabled=!vm.busy&&vm.goals.count {it.ownerId==vm.uid&&it.schedule==schedule}>1,modifier=Modifier.fillMaxWidth()) {Text("순서변경")}
         }},
         confirmButton={Column {
-            OutlinedButton(onClick={reordering=true},enabled=!vm.busy&&vm.goals.count {it.ownerId==vm.uid&&it.schedule==schedule}>1,modifier=Modifier.fillMaxWidth()) {Text("순서변경")}
+
             TextButton(onClick=onDismiss,modifier=Modifier.align(Alignment.End)) {Text("닫기")}
         }})
     if(reordering) GoalOrderDialog(vm,schedule,onDismiss={reordering=false})
