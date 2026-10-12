@@ -243,9 +243,14 @@ private fun GoalEditor(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,o
                     TextButton(onClick=onDismiss,contentPadding=PaddingValues(horizontal=8.dp,vertical=0.dp),modifier=Modifier.height(32.dp)) {Text("닫기")}
                 }
                 Column(Modifier.weight(1f,fill=false).fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(6.dp)) {
-                    Row(verticalAlignment=Alignment.CenterVertically) {
-                        Text("오늘의 분류",fontSize=12.sp,modifier=Modifier.weight(1f))
-                        GoalSchedulePicker(vm.scheduleFor(today),!vm.busy) {vm.setDaySchedule(today,it)}
+                    val currentDaySchedule=vm.scheduleFor(today)
+                    val currentLabel=if(currentDaySchedule==GoalSchedule.WEEKDAY)"평일" else "주말"
+                    val otherSchedule=if(currentDaySchedule==GoalSchedule.WEEKDAY)GoalSchedule.WEEKEND else GoalSchedule.WEEKDAY
+                    val otherLabel=if(otherSchedule==GoalSchedule.WEEKDAY)"평일" else "주말"
+                    Column(verticalArrangement=Arrangement.spacedBy(2.dp)) {
+                        Text("오늘은 \"${currentLabel}\"인데 \"${otherLabel}\"로 바꿀까요?",fontSize=12.sp,color=Muted)
+                        TextButton(onClick={vm.setDaySchedule(today,otherSchedule);onSchedule(otherSchedule)},enabled=!vm.busy,
+                            contentPadding=PaddingValues(horizontal=8.dp,vertical=0.dp),modifier=Modifier.height(32.dp)) {Text("${otherLabel}로 바꾸기",fontSize=12.sp)}
                     }
                     Segments(GoalSchedule.entries.map {it.label},schedule.ordinal,verticalPadding=8.dp) {onSchedule(GoalSchedule.entries[it])}
                     if(goals.isEmpty()) Text("등록된 목표가 없습니다.",color=Muted,modifier=Modifier.padding(vertical=8.dp))
