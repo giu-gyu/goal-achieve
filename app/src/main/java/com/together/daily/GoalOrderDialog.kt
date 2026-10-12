@@ -2,7 +2,7 @@ package com.together.daily
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.scrollBy
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import kotlinx.coroutines.delay
+
 
 @Composable
 internal fun GoalOrderDialog(vm:DailyViewModel,schedule:GoalSchedule,onDismiss:()->Unit) {
@@ -24,7 +24,6 @@ internal fun GoalOrderDialog(vm:DailyViewModel,schedule:GoalSchedule,onDismiss:(
     var draggedId by remember {mutableStateOf<String?>(null)}
     var draggedTop by remember {mutableFloatStateOf(0f)}
     var draggedHeight by remember {mutableIntStateOf(0)}
-    var scrollSpeed by remember {mutableFloatStateOf(0f)}
     fun moveAtCenter() {
         val id=draggedId?:return
         val center=draggedTop+draggedHeight/2f
@@ -35,19 +34,10 @@ internal fun GoalOrderDialog(vm:DailyViewModel,schedule:GoalSchedule,onDismiss:(
         val to=ordered.indexOfFirst {it.id==target.key}
         if(from>=0&&to>=0) ordered=ordered.toMutableList().apply {add(to,removeAt(from))}
     }
-    LaunchedEffect(draggedId) {
-        while(draggedId!=null) {
-            if(scrollSpeed!=0f) {
-                listState.scrollBy(scrollSpeed)
-                moveAtCenter()
-            }
-            delay(16)
-        }
-    }
     AlertDialog(onDismissRequest={if(!vm.busy)onDismiss()},containerColor=Cream,
         title={Text("${schedule.label} 목표 순서변경")},
         text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            Text("목표를 터치해서 위아래로 끌어주세요. 화면 가장자리에서는 자동으로 스크롤돼요.",color=Muted)
+            Text("목표를 터치해서 위아래로 끌어주세요.",color=Muted)
             LazyColumn(state=listState,modifier=Modifier.fillMaxWidth().heightIn(max=360.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 itemsIndexed(ordered,key={_,goal->goal.id}) {index,goal->
                     val active=draggedId==goal.id
@@ -63,18 +53,11 @@ internal fun GoalOrderDialog(vm:DailyViewModel,schedule:GoalSchedule,onDismiss:(
                                             draggedId=goal.id;draggedTop=it.offset.toFloat();draggedHeight=it.size
                                         }
                                     },
-                                    onDragEnd={draggedId=null;scrollSpeed=0f},
-                                    onDragCancel={draggedId=null;scrollSpeed=0f},
+                                    onDragEnd={draggedId=null},
+                                    onDragCancel={draggedId=null},
                                     onDrag={change,amount->
                                         change.consume()
                                         draggedTop+=amount.y
-                                        val info=listState.layoutInfo
-                                        val edge=48.dp.toPx()
-                                        scrollSpeed=when {
-                                            draggedTop<info.viewportStartOffset+edge->-12f
-                                            draggedTop+draggedHeight>info.viewportEndOffset-edge->12f
-                                            else->0f
-                                        }
                                         moveAtCenter()
                                     })
                             }) {
