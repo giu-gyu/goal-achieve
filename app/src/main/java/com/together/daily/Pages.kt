@@ -107,60 +107,110 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
     }
     if(weekOffset!=0L) TextButton(onClick={weekOffset=0L},contentPadding=PaddingValues(4.dp),modifier=Modifier.align(Alignment.CenterHorizontally).height(30.dp)) {Text(if(monthly)"이번 달" else "이번 주",fontSize=11.sp)}
     val members=vm.names.entries.sortedBy {if(it.key==vm.uid)0 else 1}
-    members.forEach {member ->
-        WeeklyRecords(vm,member.key,"${member.value} · ${if(member.key==vm.uid) "나" else "짝꿍"}",start,end,today)
-        vm.memos.filter {it.ownerId==member.key&&it.date>=start&&it.date<=end}.sortedBy {it.date}.forEach {memo ->
-            Text("${memo.date.monthValue}/${memo.date.dayOfMonth} 메모",fontSize=11.sp,color=Muted)
-            Text(memo.text,fontSize=12.sp,lineHeight=17.sp)
+    GoalSchedule.entries.forEach { schedule ->
+        val palette=recordPalette(schedule)
+        Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(24.dp),color=palette.background,
+            border=androidx.compose.foundation.BorderStroke(1.dp,palette.border)) {
+            Column(Modifier.padding(horizontal=12.dp,vertical=16.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically) {
+                    HorizontalDivider(Modifier.weight(1f),color=palette.border)
+                    Row(Modifier.padding(horizontal=12.dp).background(palette.header,RoundedCornerShape(50)).padding(horizontal=18.dp,vertical=9.dp),
+                        horizontalArrangement=Arrangement.spacedBy(7.dp),verticalAlignment=Alignment.CenterVertically) {
+                        Mark(if(schedule==GoalSchedule.WEEKDAY)Symbol.Calendar else Symbol.Leaf,color=palette.accent,modifier=Modifier.size(18.dp))
+                        Text(schedule.label,fontSize=16.sp,fontWeight=FontWeight.Bold,color=palette.accent,textAlign=TextAlign.Center)
+                    }
+                    HorizontalDivider(Modifier.weight(1f),color=palette.border)
+                }
+                members.forEachIndexed {index,member ->
+                    if(index>0) HorizontalDivider(color=palette.border)
+                    WeeklyRecords(vm,member.key,"${member.value} · ${if(member.key==vm.uid) "나" else "짝꿍"}",start,end,today,schedule)
+                    val memos=vm.memos.filter {
+                        it.ownerId==member.key&&it.date>=start&&it.date<=end&&schedule.includes(it.date)&&it.text.isNotBlank()
+                    }.sortedBy {it.date}
+                    if(memos.isNotEmpty()) {
+                        Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                            memos.forEach {memo->RecordMemoCard(memo,member.value,member.key==vm.uid,palette)}
+                        }
+                    }
+                }
+            }
         }
+        Spacer(Modifier.height(8.dp))
     }
+    if(start.year<KoreanHolidays.FIRST_SUPPORTED_YEAR || end.year>KoreanHolidays.LAST_SUPPORTED_YEAR) Text("이 연도의 설·추석·대체공휴일은 아직 반영되지 않았어요. 공휴일 데이터 업데이트가 필요합니다.",fontSize=11.sp,color=Muted)
     if(members.size<2) Text("상대방이 연결되면 주간 기록이 여기에 표시됩니다.",color=Muted,fontSize=12.sp)
     }
 }
 
+private data class RecordPalette(val accent:Color,val background:Color,val header:Color,val border:Color,val cell:Color)
+
+private fun recordPalette(schedule:GoalSchedule)=if(schedule==GoalSchedule.WEEKDAY)
+    RecordPalette(Color(0xFF315F85),Color(0xFFEFF6FC),Color(0xFFDCEAF7),Color(0xFFBFD4E6),Color(0xFFF9FCFF))
+else RecordPalette(Color(0xFF72528D),Color(0xFFF5F0FA),Color(0xFFE8DDF2),Color(0xFFD4C3E3),Color(0xFFFCFAFF))
+
 @Composable
-private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:LocalDate,end:LocalDate,today:LocalDate) {
-    val goals=vm.goals.filter {it.ownerId==ownerId&&it.start<=end&&(it.end==null||it.end>=start)}
+private fun RecordMemoCard(memo:DailyMemo,name:String,own:Boolean,palette:RecordPalette) {
+    Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp),color=Color.White,
+        border=androidx.compose.foundation.BorderStroke(1.dp,palette.border)) {
+        Row(Modifier.padding(12.dp),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+            Box(Modifier.width(3.dp).height(32.dp).background(palette.accent,RoundedCornerShape(50)))
+            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    Text(memo.date.format(java.time.format.DateTimeFormatter.ofPattern("M월 d일 (E)",java.util.Locale.KOREAN)),
+                        fontSize=12.sp,fontWeight=FontWeight.Bold,color=palette.accent,modifier=Modifier.weight(1f))
+                    Text(if(own)"나의 메모" else "${name}의 메모",fontSize=10.sp,color=palette.accent,
+                        modifier=Modifier.background(palette.background,RoundedCornerShape(50)).padding(horizontal=8.dp,vertical=4.dp))
+                }
+                Text(memo.text,fontSize=13.sp,lineHeight=21.sp,color=Ink)
+            }
+        }
+    }
+}
+@Composable
+private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:LocalDate,end:LocalDate,today:LocalDate,schedule:GoalSchedule) {
+    val palette=recordPalette(schedule)
+    val goals=vm.goals.filter {it.ownerId==ownerId&&it.schedule==schedule&&it.start<=end&&(it.end==null||it.end>=start)}
     val records=vm.entries.associateBy {it.goalId to it.date}
-    val days=generateSequence(start){it.plusDays(1)}.takeWhile {it<=end}.toList()
+    val days=generateSequence(start){it.plusDays(1)}.takeWhile {it<=end}.filter {schedule.includes(it)}.toList()
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-        Text(name,fontSize=14.sp,fontWeight=FontWeight.Bold)
-        if(goals.isEmpty()) Text("이 주에 등록된 목표가 없습니다.",color=Muted,fontSize=12.sp)
+        Text(name,fontSize=14.sp,fontWeight=FontWeight.Bold,color=palette.accent)
+        if(goals.isEmpty()) Text("이 기간에 등록된 목표가 없습니다.",color=Muted,fontSize=12.sp)
+        else if(days.isEmpty()) Text("이 기간에 해당 날짜가 없습니다.",color=Muted,fontSize=12.sp)
         else BoxWithConstraints(Modifier.fillMaxWidth()) {
             val tableWidth=if(days.size>7)maxOf(maxWidth,(124+days.size*28).dp)else maxWidth
             Column(if(days.size>7)Modifier.horizontalScroll(rememberScrollState()) else Modifier) {
-            Column(Modifier.width(tableWidth).border(.5.dp,Muted.copy(alpha=.5f))) {
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).background(Lavender)) {
+            Column(Modifier.width(tableWidth).clip(RoundedCornerShape(12.dp)).background(palette.cell).border(.5.dp,palette.border,RoundedCornerShape(12.dp))) {
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).background(palette.header)) {
                 Box(Modifier.weight(3f).fillMaxHeight().padding(4.dp),contentAlignment=Alignment.CenterStart) {Text("목표",fontSize=12.sp)}
                 days.forEachIndexed {i,day ->
-                    Column(Modifier.weight(1f).border(.5.dp,Muted.copy(alpha=.5f)).padding(vertical=3.dp),horizontalAlignment=Alignment.CenterHorizontally) {
+                    Column(Modifier.weight(1f).border(.5.dp,palette.border).padding(vertical=3.dp),horizontalAlignment=Alignment.CenterHorizontally) {
                         Text(listOf("월","화","수","목","금","토","일")[day.dayOfWeek.value-1],fontSize=11.sp)
-                        Text(day.dayOfMonth.toString(),fontSize=10.sp,color=if(day==today)Coral else Muted)
+                        Text(day.dayOfMonth.toString(),fontSize=10.sp,color=if(day==today)palette.accent else Muted)
                     }
                 }
-                Box(Modifier.weight(1.25f).fillMaxHeight().border(.5.dp,Muted.copy(alpha=.5f)),contentAlignment=Alignment.Center) {Text("성공",fontSize=10.sp)}
+                Box(Modifier.weight(1.25f).fillMaxHeight().border(.5.dp,palette.border),contentAlignment=Alignment.Center) {Text("달성률",fontSize=10.sp)}
             }
             goals.forEach {goal ->
                 Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-                    Box(Modifier.weight(3f).fillMaxHeight().border(.5.dp,Muted.copy(alpha=.5f)).padding(4.dp),contentAlignment=Alignment.CenterStart) {Text(goal.title,fontSize=12.sp,lineHeight=15.sp)}
+                    Box(Modifier.weight(3f).fillMaxHeight().border(.5.dp,palette.border).padding(4.dp),contentAlignment=Alignment.CenterStart) {Text("${goal.title}\n${goal.frequencyLabel}",fontSize=12.sp,lineHeight=15.sp)}
                     days.forEach {day ->
                         val done=records[goal.id to day]?.done
                         val applicable=goal.scheduled(day)&&day<=today
                         val label=if(!applicable||done==null) "" else if(done) "O" else "X"
-                        Box(Modifier.weight(1f).fillMaxHeight().heightIn(min=28.dp).border(.5.dp,Muted.copy(alpha=.5f)).background(if(day==today)Peach.copy(alpha=.3f)else Color.White),contentAlignment=Alignment.Center) {
+                        Box(Modifier.weight(1f).fillMaxHeight().heightIn(min=28.dp).border(.5.dp,palette.border).background(if(day==today)palette.header else palette.cell),contentAlignment=Alignment.Center) {
                             Text(label,fontSize=14.sp,fontWeight=FontWeight.Bold,color=if(done==true)Color(0xFF1565C0) else Color(0xFFC62828))
                         }
                     }
-                    Box(Modifier.weight(1.25f).fillMaxHeight().border(.5.dp,Muted.copy(alpha=.5f)),contentAlignment=Alignment.Center) {Text(successCount(goal,vm.entries,start,end,today).toString(),fontSize=12.sp,fontWeight=FontWeight.Bold)}
+                    Box(Modifier.weight(1.25f).fillMaxHeight().border(.5.dp,palette.border),contentAlignment=Alignment.Center) {Text(progress(goal,vm.entries,start,end,today).let {if(it.total==0)"—" else "${it.percent}%"},fontSize=11.sp,fontWeight=FontWeight.Bold)}
                 }
             }
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).background(Lavender.copy(alpha=.5f))) {
-                Box(Modifier.weight(3f).fillMaxHeight().border(.5.dp,Muted.copy(alpha=.5f)).padding(4.dp)) {Text("성공률",fontSize=11.sp)}
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).background(palette.header)) {
+                Box(Modifier.weight(3f).fillMaxHeight().border(.5.dp,palette.border).padding(4.dp)) {Text("당일 완료율",fontSize=11.sp)}
                 days.forEach {day ->
                     val value=daySuccessPercent(goals,vm.entries,day,today)
-                    Box(Modifier.weight(1f).fillMaxHeight().heightIn(min=28.dp).border(.5.dp,Muted.copy(alpha=.5f)),contentAlignment=Alignment.Center) {Text(value?.let {"$it%"}?:"",fontSize=9.sp)}
+                    Box(Modifier.weight(1f).fillMaxHeight().heightIn(min=28.dp).border(.5.dp,palette.border),contentAlignment=Alignment.Center) {Text(value?.let {"$it%"}?:"",fontSize=9.sp)}
                 }
-                Box(Modifier.weight(1.25f).fillMaxHeight().border(.5.dp,Muted.copy(alpha=.5f)),contentAlignment=Alignment.Center) {Text("",fontSize=10.sp)}
+                Box(Modifier.weight(1.25f).fillMaxHeight().border(.5.dp,palette.border),contentAlignment=Alignment.Center) {Text("기간",fontSize=10.sp)}
             }
             }
             }
@@ -186,8 +236,10 @@ internal fun StatsPage(vm:DailyViewModel,today:LocalDate,onLogout:()->Unit) {
             Text(if(monthly)"${start.year}년 ${start.monthValue}월" else "${start.monthValue}/${start.dayOfMonth} – ${end.monthValue}/${end.dayOfMonth} · ${start.year}",fontSize=12.sp,textAlign=TextAlign.Center,modifier=Modifier.weight(1f))
             IconButton(onClick={offset++},enabled=offset<0,modifier=Modifier.size(36.dp)) {Mark(Symbol.Next,color=if(offset<0)Ink else Line,description="다음 기간")}
         }
+        GoalSchedule.entries.forEach { schedule ->
+        Text(schedule.label,fontSize=if(schedule==GoalSchedule.WEEKDAY)18.sp else 15.sp,fontWeight=FontWeight.Bold,color=if(schedule==GoalSchedule.WEEKDAY)Ink else Muted)
         vm.names.entries.sortedBy {if(it.key==vm.uid)0 else 1}.forEach {member ->
-            val ranked=vm.goals.filter {it.ownerId==member.key&&it.start<=minOf(end,today)&&(it.end==null||it.end>=start)}
+            val ranked=vm.goals.filter {it.ownerId==member.key&&it.schedule==schedule&&it.start<=minOf(end,today)&&(it.end==null||it.end>=start)}
                 .map {it to progress(it,vm.entries,start,end,today)}
                 .sortedWith(compareByDescending<Pair<Goal,Progress>> {(_,p)->if(p.total==0)-1.0 else p.done.toDouble()/p.total}.thenByDescending {it.second.done}.thenBy {it.first.title})
             val values=ranked.map {it.second}
@@ -210,13 +262,14 @@ internal fun StatsPage(vm:DailyViewModel,today:LocalDate,onLogout:()->Unit) {
                     ranked.forEachIndexed {index,(goal,p) ->
                         HorizontalDivider(color=Line)
                         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                            Text("${index+1}. ${goal.title}",fontSize=12.sp,lineHeight=16.sp,modifier=Modifier.weight(1f))
+                            Text("${index+1}. ${goal.title} · ${goal.frequencyLabel}",fontSize=12.sp,lineHeight=16.sp,modifier=Modifier.weight(1f))
                             Spacer(Modifier.width(8.dp))
-                            Text(if(p.total==0)"—" else "${p.done*100/p.total}%",fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=Coral)
+                            Text(if(p.total==0)"—" else "${p.percent}%",fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=Coral)
                         }
                     }
                 }
             }
+        }
         }
     }
 }

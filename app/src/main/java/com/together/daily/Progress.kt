@@ -5,8 +5,14 @@ import java.time.DayOfWeek
 import java.time.temporal.TemporalAdjusters
 import kotlin.math.roundToInt
 
-data class Goal(val id: String, val ownerId: String, val title: String, val start: LocalDate, val end: LocalDate? = null, val order:Int=Int.MAX_VALUE) {
-    fun scheduled(date: LocalDate) = date >= start && (end == null || date <= end)
+enum class GoalSchedule(val label: String) {
+    WEEKDAY("평일"), WEEKEND("주말·공휴일");
+    fun includes(date: LocalDate) = (this == WEEKEND) == KoreanHolidays.isRestDay(date)
+}
+
+data class Goal(val id: String, val ownerId: String, val title: String, val start: LocalDate, val end: LocalDate? = null, val order:Int=Int.MAX_VALUE, val schedule:GoalSchedule=GoalSchedule.WEEKDAY, val weeklyTarget:Int?=null) {
+    val frequencyLabel get() = weeklyTarget?.let { "주 ${it}회" } ?: "해당 요일마다"
+    fun scheduled(date: LocalDate) = date >= start && (end == null || date <= end) && schedule.includes(date)
 }
 data class Entry(val goalId: String, val date: LocalDate, val done: Boolean)
 data class Progress(val done: Int, val missed: Int, val unrecorded: Int) {
@@ -21,8 +27,25 @@ fun progress(goal: Goal, entries: List<Entry>, start: LocalDate, end: LocalDate,
     var done = 0; var missed = 0; var blank = 0
     var date = from
     while (date <= until) {
-        when (records[date]?.done) { true -> done++; false -> missed++; null -> blank++ }
+        if (goal.scheduled(date)) when (records[date]?.done) { true -> done++; false -> missed++; null -> blank++ }
         date = date.plusDays(1)
+    }
+    goal.weeklyTarget?.let { target ->
+        var week = weekStart(from)
+        var completed = 0; var required = 0; var failed = 0
+        while (week <= until) {
+            val weekEnd = minOf(week.plusDays(6), until)
+            val weekFrom = maxOf(week, from)
+            val days = generateSequence(weekFrom) { it.plusDays(1) }.takeWhile { it <= weekEnd }
+                .filter { goal.scheduled(it) }.toList()
+            if (days.isNotEmpty()) {
+                val successes = days.count { records[it]?.done == true }.coerceAtMost(target)
+                val misses = days.count { records[it]?.done == false }.coerceAtMost(target - successes)
+                required += target; completed += successes; failed += misses
+            }
+            week = week.plusWeeks(1)
+        }
+        return Progress(completed, failed, required - completed - failed)
     }
     return Progress(done, missed, blank)
 }

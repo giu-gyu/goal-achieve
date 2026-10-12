@@ -6,6 +6,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +50,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun DailyApp(vm: DailyViewModel = viewModel()) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    var goalSchedule by rememberSaveable { mutableStateOf(if(KoreanHolidays.isRestDay(koreaToday())) GoalSchedule.WEEKEND else GoalSchedule.WEEKDAY) }
     var adding by remember { mutableStateOf(false) }
     var profileOpen by rememberSaveable {mutableStateOf(false)}
     var editing by rememberSaveable { mutableStateOf(false) }
@@ -99,7 +102,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
                     if(vm.demo) StatusPill("체험 모드",Lilac,Lavender)
                     else if(vm.offline) StatusPill("연결을 기다리고 있어요 · 기록은 보관 중",Muted,Line)
                     when(tab) {
-                        0 -> TodayPage(vm,today,onEdit={editing=true},onCelebrate={celebration++})
+                        0 -> TodayPage(vm,today,goalSchedule,onSchedule={goalSchedule=it},onEdit={editing=true},onCelebrate={celebration++})
                         1 -> HistoryPage(vm,today)
                         2,3 -> StatsPage(vm,today,onLogout={vm.logout();tab=0})
                     }
@@ -111,16 +114,19 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
         }
     }
     if(profileOpen&&vm.pairId.isNotEmpty()) ProfileDialog(vm,onDismiss={profileOpen=false})
-    if(editing) GoalEditor(vm,onAdd={adding=true},onDismiss={editing=false})
+    if(editing) GoalEditor(vm,goalSchedule,onSchedule={goalSchedule=it},onAdd={adding=true},onDismiss={editing=false})
     if(adding) {
-        val ownGoals=vm.goals.filter {it.ownerId==vm.uid}
+        val ownGoals=vm.goals.filter {it.ownerId==vm.uid&&it.schedule==goalSchedule}
         var position by rememberSaveable {mutableIntStateOf(ownGoals.size)}
         var title by rememberSaveable { mutableStateOf("") }
+        var schedule by rememberSaveable { mutableStateOf(goalSchedule) }
+        var target by rememberSaveable { mutableStateOf<Int?>(null) }
         AlertDialog(onDismissRequest={adding=false},containerColor=Cream,shape=RoundedCornerShape(28.dp),
             icon={Mark(Symbol.Leaf,color=Sage,modifier=Modifier.size(28.dp))},
             title={Text("목표 추가",fontWeight=FontWeight.Bold,fontSize=22.sp)},
             text={Column(verticalArrangement=Arrangement.spacedBy(14.dp)) {
-                Text("오늘부터 매일 수행할 목표를 입력하세요.",color=Muted,fontSize=14.sp,lineHeight=22.sp)
+                Text("평일 또는 주말·공휴일 목표를 설정하세요.",color=Muted,fontSize=14.sp,lineHeight=22.sp)
+                GoalSettings(schedule,target,!vm.busy,onSchedule={schedule=it},onTarget={target=it})
                 OutlinedTextField(title,{if(it.length<=60)title=it},singleLine=true,
                     placeholder={Text("목표 이름",fontSize=13.sp)},shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth())
 
@@ -130,7 +136,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
                     TextButton(onClick={position++},enabled=position<ownGoals.size&&!vm.busy){Text("↓")}
                 }
             }},
-            confirmButton={Button(onClick={vm.addGoal(title,position);adding=false},enabled=title.isNotBlank()&&!vm.busy,shape=RoundedCornerShape(12.dp)) {Text("추가")}},
+            confirmButton={Button(onClick={vm.addGoal(title,position,schedule,target,onSaved={goalSchedule=schedule;adding=false})},enabled=title.isNotBlank()&&!vm.busy,shape=RoundedCornerShape(12.dp)) {Text("추가")}},
             dismissButton={TextButton(onClick={adding=false}){Text("취소")}})
     }
 
@@ -156,10 +162,10 @@ private fun BottomMenu(selected: Int,onSelect:(Int)->Unit) {
 }
 
 @Composable
-private fun TodayPage(vm:DailyViewModel,today:LocalDate,onEdit:()->Unit,onCelebrate:()->Unit) {
+private fun TodayPage(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,onSchedule:(GoalSchedule)->Unit,onEdit:()->Unit,onCelebrate:()->Unit) {
     var owner by rememberSaveable { mutableIntStateOf(0) }
     val id=if(owner==0) vm.uid else vm.names.keys.firstOrNull {it!=vm.uid}.orEmpty()
-    val list=vm.goals.filter {it.ownerId==id&&it.scheduled(today)}
+    val list=vm.goals.filter {it.ownerId==id&&it.schedule==schedule&&it.start<=today&&(it.end==null||it.end>=today)}
     val done=list.count {g->vm.entries.any {it.goalId==g.id&&it.date==today&&it.done}}
     var pendingCelebration by remember(id,today) {mutableStateOf<String?>(null)}
     LaunchedEffect(done,pendingCelebration,vm.busy,vm.error) {
@@ -176,39 +182,55 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,onEdit:()->Unit,onCelebr
         }
         LinearProgressIndicator(progress={if(list.isEmpty())0f else done.toFloat()/list.size},modifier=Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),color=Coral,trackColor=Color.White.copy(alpha=.8f),drawStopIndicator={})
     }
+    Segments(GoalSchedule.entries.map { it.label },schedule.ordinal) { onSchedule(GoalSchedule.entries[it]) }
+    Text("오늘은 ${if(KoreanHolidays.isRestDay(today)) "주말·공휴일" else "평일"}입니다. 완료는 해당 날짜의 목표에 기록해요.",fontSize=11.sp,color=Muted)
     OwnerSwitch(vm,owner){owner=it}
     if(list.isEmpty()) Text("오늘 등록된 목표가 없습니다.",color=Muted,fontSize=14.sp)
     list.forEach {goal -> GoalTile(goal,vm.entries.find {it.goalId==goal.id&&it.date==today}?.done,
-        editable=id==vm.uid&&!vm.busy,onRecord={value ->
+        editable=id==vm.uid&&!vm.busy&&goal.scheduled(today),onRecord={value ->
             if(value==true&&vm.entries.none {it.goalId==goal.id&&it.date==today&&it.done}) pendingCelebration=goal.id
             else pendingCelebration=null
             vm.record(goal,today,value)
         })}
     val saved=vm.memos.firstOrNull {it.ownerId==vm.uid&&it.date==today}?.text.orEmpty()
-    var memo by rememberSaveable(vm.uid,today.toString(),saved) {mutableStateOf(saved)}
+    var draft by rememberSaveable(vm.uid,today.toString(),stateSaver=Saver<MemoDraft,List<String>>(
+        save={listOf(it.text,it.baseline)},restore={MemoDraft(it[0],it[1])}
+    )) {mutableStateOf(MemoDraft(vm.memoDraft(today)?:saved,saved))}
+    LaunchedEffect(saved) { draft=draft.remote(saved) }
     Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
         Text("오늘 메모",fontSize=14.sp,fontWeight=FontWeight.SemiBold)
-        OutlinedTextField(memo,{if(it.length<=2000)memo=it},placeholder={Text("오늘의 메모")},minLines=2,maxLines=5,modifier=Modifier.fillMaxWidth())
-        TextButton(onClick={vm.saveMemo(today,memo)},enabled=!vm.busy&&memo.trim()!=saved,modifier=Modifier.align(Alignment.End)) {Text("메모 저장")}
+        OutlinedTextField(draft.text,{if(it.length<=2000) {draft=draft.copy(text=it);vm.editMemoDraft(today,it)}},placeholder={Text("오늘의 메모")},minLines=2,maxLines=5,modifier=Modifier.fillMaxWidth())
+        TextButton(onClick={
+            val submitted = draft.text
+            vm.saveMemo(today,submitted,onSaved={draft=draft.confirmed(submitted)})
+        },enabled=!vm.busy&&draft.text.trim()!=saved,modifier=Modifier.align(Alignment.End)) {Text("메모 저장")}
+        vm.memoStatus?.let { Text(it,fontSize=12.sp,color=Muted) }
     }
 
 }
 
 @Composable
-private fun GoalEditor(vm:DailyViewModel,onAdd:()->Unit,onDismiss:()->Unit) {
+private fun GoalEditor(vm:DailyViewModel,schedule:GoalSchedule,onSchedule:(GoalSchedule)->Unit,onAdd:()->Unit,onDismiss:()->Unit) {
     var deleting by remember {mutableStateOf<Goal?>(null)}
+    var reordering by remember {mutableStateOf(false)}
     AlertDialog(onDismissRequest=onDismiss,containerColor=Cream,
         title={Text("목표 수정",fontWeight=FontWeight.Bold)},
         text={Column(Modifier.fillMaxWidth().heightIn(max=450.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(14.dp)) {
-            val goals=vm.goals.filter {it.ownerId==vm.uid}
+            Segments(GoalSchedule.entries.map {it.label},schedule.ordinal) {onSchedule(GoalSchedule.entries[it])}
+            val goals=vm.goals.filter {it.ownerId==vm.uid&&it.schedule==schedule}
             if(goals.isEmpty()) Text("등록된 목표가 없습니다.",color=Muted)
-            goals.forEachIndexed {index,goal -> key(goal.id) {
+            goals.forEach {goal -> key(goal.id) {
                 var title by rememberSaveable(goal.title) {mutableStateOf(goal.title)}
-                Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
+
+                var target by rememberSaveable(goal.weeklyTarget) {mutableStateOf(goal.weeklyTarget)}
+                Column(Modifier.fillMaxWidth().background(Color.White,RoundedCornerShape(16.dp)).border(1.dp,Line,RoundedCornerShape(16.dp)).padding(12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                     OutlinedTextField(title,{if(it.length<=60)title=it},label={Text("목표 명칭")},singleLine=true,enabled=!vm.busy,modifier=Modifier.fillMaxWidth())
+                    GoalSettings(goal.schedule,target,!vm.busy,onSchedule={},onTarget={target=it},showSchedule=false)
+                    if(target!=goal.weeklyTarget) {
+                        Text("횟수 변경은 기존 기록의 달성률에도 적용돼요.",fontSize=11.sp,color=Muted)
+                        TextButton(onClick={vm.configureGoal(goal,goal.schedule,target)},enabled=!vm.busy) {Text("횟수 저장")}
+                    }
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                        TextButton(onClick={vm.moveGoal(goal,-1)},enabled=!vm.busy&&index>0,contentPadding=PaddingValues(4.dp)){Text("↑")}
-                        TextButton(onClick={vm.moveGoal(goal,1)},enabled=!vm.busy&&index<goals.lastIndex,contentPadding=PaddingValues(4.dp)){Text("↓")}
                         Spacer(Modifier.weight(1f))
                         TextButton(onClick={vm.renameGoal(goal,title)},enabled=!vm.busy&&title.isNotBlank()&&title.trim()!=goal.title) {Text("저장")}
                         TextButton(onClick={deleting=goal},enabled=!vm.busy) {Text("삭제")}
@@ -217,7 +239,11 @@ private fun GoalEditor(vm:DailyViewModel,onAdd:()->Unit,onDismiss:()->Unit) {
             }}
             OutlinedButton(onClick=onAdd,enabled=!vm.busy,modifier=Modifier.fillMaxWidth()) {Text("목표 추가")}
         }},
-        confirmButton={TextButton(onClick=onDismiss) {Text("닫기")}})
+        confirmButton={Column {
+            OutlinedButton(onClick={reordering=true},enabled=!vm.busy&&vm.goals.count {it.ownerId==vm.uid&&it.schedule==schedule}>1,modifier=Modifier.fillMaxWidth()) {Text("순서변경")}
+            TextButton(onClick=onDismiss,modifier=Modifier.align(Alignment.End)) {Text("닫기")}
+        }})
+    if(reordering) GoalOrderDialog(vm,schedule,onDismiss={reordering=false})
     deleting?.let {goal ->
         AlertDialog(onDismissRequest={deleting=null},title={Text("목표 삭제")},
             text={Text("‘${goal.title}’ 목표와 해당 목표의 기록을 삭제합니다.")},
@@ -249,6 +275,7 @@ internal fun GoalTile(goal:Goal,done:Boolean?,editable:Boolean,onRecord:(Boolean
             }
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(5.dp)) {
                 Text(goal.title,fontSize=15.sp,fontWeight=FontWeight.SemiBold,lineHeight=22.sp)
+                Text("${goal.schedule.label} · ${goal.frequencyLabel}",fontSize=11.sp,color=Muted)
             }
             if(editable&&(done!=null||onEnd!=null)) Box {
                 IconButton(onClick={menu=true},modifier=Modifier.size(32.dp)) {Mark(Symbol.More,color=Muted,description="목표 메뉴")}
@@ -274,5 +301,28 @@ private fun RecordButton(text:String,selected:Boolean,color:Color,bg:Color,symbo
             symbol?.let {Mark(it,color=if(selected)color else Muted,modifier=Modifier.size(15.dp));Spacer(Modifier.width(5.dp))}
             Text(text,color=if(selected)color else Muted,fontSize=12.sp,fontWeight=if(selected)FontWeight.SemiBold else FontWeight.Normal)
         }
+    }
+}
+
+@Composable
+private fun GoalSettings(schedule:GoalSchedule,target:Int?,enabled:Boolean,onSchedule:(GoalSchedule)->Unit,onTarget:(Int?)->Unit,showSchedule:Boolean=true) {
+    Column(verticalArrangement=Arrangement.spacedBy(5.dp)) {
+        if(showSchedule) {
+        Text("목표 분류",fontSize=12.sp,fontWeight=FontWeight.SemiBold)
+        if(enabled) Segments(GoalSchedule.entries.map {it.label},schedule.ordinal) {onSchedule(GoalSchedule.entries[it])}
+        else Text(schedule.label,fontSize=12.sp,color=Muted)
+        }
+        Row(verticalAlignment=Alignment.CenterVertically) {
+            Text("주당 횟수 설정",fontSize=12.sp,modifier=Modifier.weight(1f))
+            Switch(checked=target!=null,onCheckedChange={onTarget(if(it)2 else null)},enabled=enabled)
+        }
+        if(target!=null) {
+            Row(verticalAlignment=Alignment.CenterVertically) {
+                Text("일주일에 ${target}회",fontSize=13.sp,modifier=Modifier.weight(1f))
+                TextButton(onClick={onTarget(target-1)},enabled=enabled&&target>1){Text("−")}
+                TextButton(onClick={onTarget(target+1)},enabled=enabled&&target<7){Text("+")}
+            }
+            Text("월~일 기준 · 하루 완료 1회 · 초과 달성은 100%\n선택한 분류의 날짜에만 완료를 기록해요.",fontSize=11.sp,color=Muted)
+        } else Text("선택한 분류의 날짜마다 수행해요.",fontSize=11.sp,color=Muted)
     }
 }

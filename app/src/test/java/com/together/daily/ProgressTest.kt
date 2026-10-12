@@ -7,8 +7,8 @@ import java.time.LocalDate
 class ProgressTest {
     private fun d(s: String) = LocalDate.parse(s)
     @Test fun creationAndFutureDaysDoNotDiluteRate() {
-        val g = Goal("g", "u", "걷기", d("2026-10-07"))
-        val p = progress(g, listOf(Entry("g", d("2026-10-07"), true), Entry("g", d("2026-10-08"), false)), d("2026-10-05"), d("2026-10-11"), d("2026-10-09"))
+        val g = Goal("g", "u", "걷기", d("2026-11-04"))
+        val p = progress(g, listOf(Entry("g", d("2026-11-04"), true), Entry("g", d("2026-11-05"), false)), d("2026-11-02"), d("2026-11-08"), d("2026-11-06"))
         assertEquals(Progress(1, 1, 1), p)
         assertEquals(33, p.percent)
     }
@@ -17,7 +17,7 @@ class ProgressTest {
         assertEquals(Progress(0, 0, 2), progress(g, emptyList(), d("2026-10-01"), d("2026-10-31"), d("2026-10-09")))
     }
     @Test fun noEligibleDaysAndOtherGoals() {
-        val g = Goal("g", "u", "걷기", d("2026-10-10"))
+        val g = Goal("g", "u", "걷기", d("2026-10-10"), schedule=GoalSchedule.WEEKEND)
         assertEquals(0, progress(g, emptyList(), d("2026-10-01"), d("2026-10-31"), d("2026-10-09")).total)
         assertEquals(Progress(0, 0, 1), progress(g, listOf(Entry("other", d("2026-10-10"), true)), d("2026-10-10"), d("2026-10-10"), d("2026-10-10")))
     }

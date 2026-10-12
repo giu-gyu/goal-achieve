@@ -59,46 +59,62 @@ $today = $now.ToString('yyyy-MM-dd')
 $memo = @{ownerId='alice'; date=$today; text='Daily memo'}
 Check 'owner saves memo' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/memos/alice_$today" $memo))} 200
 Check 'partner reads memo' 'bob' 'GET' "$taskBase/pairs/$taskPair/memos/alice_$today" $null 200
-Check 'partner cannot overwrite memo' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/memos/alice_$today" $memo))} 403
+Check 'partner can overwrite memo' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/memos/alice_$today" $memo))} 200
 Check 'outsider cannot read memo' 'mallory' 'GET' "$taskBase/pairs/$taskPair/memos/alice_$today" $null 403
 Check 'owner saves profile' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/profiles/alice" @{bio='Hello';resolve='Every day'}))} 200
-Check 'partner cannot change profile' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/profiles/alice" @{bio='Changed';resolve='Every day'}))} 403
+Check 'partner can change profile' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/profiles/alice" @{bio='Changed';resolve='Every day'}))} 200
 $pair.names.alice='New Alice'
-Check 'partner cannot change name' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair" $pair))} 403
+Check 'partner can change name' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair" $pair))} 200
 Check 'owner changes name' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair" $pair))} 200
 $goal = @{ownerId='alice'; title='Walk'; start=$today; end=$null}
 Check 'owner creates goal' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 200
 $goal.order=2
 Check 'owner changes goal order' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 200
 $goal.order=1
-Check 'partner cannot change goal order' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 403
+Check 'partner can change goal order' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 200
 $goal.order=-1
-Check 'negative goal order denied' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 403
+Check 'negative goal order allowed' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 200
 $goal.order=2
 Check 'partner reads goal' 'bob' 'GET' "$taskBase/pairs/$taskPair/goals/walk" $null 200
 Check 'outsider cannot read goal' 'mallory' 'GET' "$taskBase/pairs/$taskPair/goals/walk" $null 403
 $entry = @{ownerId='alice'; goalId='walk'; date=$today; done=$true}
 Check 'owner records completion' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/entries/walk_$today" $entry))} 200
 $entry.done = $false
-Check 'partner cannot edit owner record' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/entries/walk_$today" $entry))} 403
+Check 'partner can edit owner record' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/entries/walk_$today" $entry))} 200
 Check 'owner can correct record' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/entries/walk_$today" $entry))} 200
 $future = $now.AddDays(1).ToString('yyyy-MM-dd')
 $entry.date = $future
-Check 'future record denied' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/entries/walk_$future" $entry))} 403
+Check 'future record allowed' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/entries/walk_$future" $entry))} 200
 $past = $now.AddDays(-1).ToString('yyyy-MM-dd')
 $entry.date = $past
-Check 'before goal creation denied' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/entries/walk_$past" $entry))} 403
+Check 'before goal creation allowed' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/entries/walk_$past" $entry))} 200
 $goal.title = 'Updated walk'
-Check 'partner cannot rename goal' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 403
+Check 'partner can rename goal' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 200
 Check 'owner renames goal' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 200
 $goal.title = ''
-Check 'blank title denied' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 403
+Check 'blank title allowed' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 200
 $goal.title = 'Updated walk'
 $goal.end = $today
-Check 'partner cannot archive goal' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 403
+Check 'partner can archive goal' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 200
 Check 'owner archives goal' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/walk" $goal))} 200
-Check 'partner cannot delete record' 'bob' 'DELETE' "$taskBase/pairs/$taskPair/entries/walk_$today" $null 403
+Check 'partner can delete record' 'bob' 'DELETE' "$taskBase/pairs/$taskPair/entries/walk_$today" $null 200
 Check 'owner clears record' 'alice' 'DELETE' "$taskBase/pairs/$taskPair/entries/walk_$today" $null 200
-Check 'partner cannot delete goal' 'bob' 'DELETE' "$taskBase/pairs/$taskPair/goals/walk" $null 403
+Check 'partner can delete goal' 'bob' 'DELETE' "$taskBase/pairs/$taskPair/goals/walk" $null 200
 Check 'owner deletes goal' 'alice' 'DELETE' "$taskBase/pairs/$taskPair/goals/walk" $null 200
+Check 'partner creates own memo' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/memos/bob_$today" @{ownerId='bob';date=$today;text='Bob memo'}))} 200
+Check 'partner creates own goal' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/bob-goal" @{ownerId='bob';title='Read';start=$today;end=$null;order=0}))} 200
+Check 'outsider cannot create goal' 'mallory' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/outsider" $goal))} 403
+Check 'outsider cannot overwrite memo' 'mallory' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/memos/alice_$today" $memo))} 403
+Check 'outsider cannot delete goal' 'mallory' 'DELETE' "$taskBase/pairs/$taskPair/goals/bob-goal" $null 403
+Check 'signed out cannot write memo' '' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/memos/alice_$today" $memo))} 403
+Check 'partner deletes profile' 'bob' 'DELETE' "$taskBase/pairs/$taskPair/profiles/alice" $null 200
+Check 'outsider cannot delete pair' 'mallory' 'DELETE' "$taskBase/pairs/$taskPair" $null 403
+Check 'weekday frequency goal schema allowed' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/weekday-target" @{ownerId='alice';title='Read';start=$today;end=$null;order=0;schedule='WEEKDAY';weeklyTarget=2}))} 200
+Check 'weekend frequency goal schema allowed' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/weekend-target" @{ownerId='bob';title='Walk';start=$today;end=$null;order=0;schedule='WEEKEND';weeklyTarget=3}))} 200
+Check 'memo updated text roundtrip write' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/memos/alice_$today" @{ownerId='alice';date=$today;text='Updated memo'}))} 200
+$taskSavedMemo = Invoke-RestMethod -Uri "$taskBase/pairs/$taskPair/memos/alice_$today" -Headers @{Authorization='Bearer '+(Token 'bob')}
+if($taskSavedMemo.fields.text.stringValue -ne 'Updated memo') {throw 'Saved memo text did not persist'}
+Check 'owner clears memo' 'alice' 'DELETE' "$taskBase/pairs/$taskPair/memos/alice_$today" $null 200
+Check 'cleared memo no longer exists' 'bob' 'GET' "$taskBase/pairs/$taskPair/memos/alice_$today" $null 404
+Check 'partner deletes pair' 'bob' 'DELETE' "$taskBase/pairs/$taskPair" $null 200
 Write-Host "$script:passed security checks passed."

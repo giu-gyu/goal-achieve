@@ -5,7 +5,7 @@ import org.junit.Test
 import java.time.LocalDate
 
 class RecordSummaryTest {
-    private val today=LocalDate.of(2026,10,9)
+    private val today=LocalDate.of(2026,10,8)
     @Test fun dailyPercentTruncatesAndCountsMissingRecords() {
         val goals=(1..3).map {Goal(it.toString(),"me","Goal",today)}
         assertEquals(33,daySuccessPercent(goals,listOf(Entry("1",today,true)),today,today))

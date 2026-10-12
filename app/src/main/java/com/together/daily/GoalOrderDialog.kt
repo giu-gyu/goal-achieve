@@ -1,0 +1,92 @@
+package com.together.daily
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
+import kotlinx.coroutines.delay
+
+@Composable
+internal fun GoalOrderDialog(vm:DailyViewModel,schedule:GoalSchedule,onDismiss:()->Unit) {
+    var ordered by remember {mutableStateOf(vm.goals.filter {it.ownerId==vm.uid&&it.schedule==schedule})}
+    val listState=rememberLazyListState()
+    var draggedId by remember {mutableStateOf<String?>(null)}
+    var draggedTop by remember {mutableFloatStateOf(0f)}
+    var draggedHeight by remember {mutableIntStateOf(0)}
+    var scrollSpeed by remember {mutableFloatStateOf(0f)}
+    fun moveAtCenter() {
+        val id=draggedId?:return
+        val center=draggedTop+draggedHeight/2f
+        val target=listState.layoutInfo.visibleItemsInfo.firstOrNull {
+            it.key!=id&&center>=it.offset&&center<=it.offset+it.size
+        }?:return
+        val from=ordered.indexOfFirst {it.id==id}
+        val to=ordered.indexOfFirst {it.id==target.key}
+        if(from>=0&&to>=0) ordered=ordered.toMutableList().apply {add(to,removeAt(from))}
+    }
+    LaunchedEffect(draggedId) {
+        while(draggedId!=null) {
+            if(scrollSpeed!=0f) {
+                listState.scrollBy(scrollSpeed)
+                moveAtCenter()
+            }
+            delay(16)
+        }
+    }
+    AlertDialog(onDismissRequest={if(!vm.busy)onDismiss()},containerColor=Cream,
+        title={Text("${schedule.label} 목표 순서변경")},
+        text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
+            Text("목표를 터치해서 위아래로 끌어주세요. 화면 가장자리에서는 자동으로 스크롤돼요.",color=Muted)
+            LazyColumn(state=listState,modifier=Modifier.fillMaxWidth().heightIn(max=360.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+                itemsIndexed(ordered,key={_,goal->goal.id}) {index,goal->
+                    val active=draggedId==goal.id
+                    val offset=listState.layoutInfo.visibleItemsInfo.firstOrNull {it.key==goal.id}?.offset?:0
+                    Surface(shape=RoundedCornerShape(16.dp),color=if(active)Peach else MaterialTheme.colorScheme.surface,
+                        border=BorderStroke(1.dp,if(active)Coral else Line),
+                        modifier=Modifier.fillMaxWidth().zIndex(if(active)1f else 0f)
+                            .graphicsLayer {translationY=if(active)draggedTop-offset else 0f}
+                            .pointerInput(goal.id,vm.busy) {
+                                if(!vm.busy) detectDragGestures(
+                                    onDragStart={
+                                        listState.layoutInfo.visibleItemsInfo.firstOrNull {it.key==goal.id}?.let {
+                                            draggedId=goal.id;draggedTop=it.offset.toFloat();draggedHeight=it.size
+                                        }
+                                    },
+                                    onDragEnd={draggedId=null;scrollSpeed=0f},
+                                    onDragCancel={draggedId=null;scrollSpeed=0f},
+                                    onDrag={change,amount->
+                                        change.consume()
+                                        draggedTop+=amount.y
+                                        val info=listState.layoutInfo
+                                        val edge=48.dp.toPx()
+                                        scrollSpeed=when {
+                                            draggedTop<info.viewportStartOffset+edge->-12f
+                                            draggedTop+draggedHeight>info.viewportEndOffset-edge->12f
+                                            else->0f
+                                        }
+                                        moveAtCenter()
+                                    })
+                            }) {
+                        Row(Modifier.padding(16.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                            Text("${index+1}",color=Coral)
+                            Text(goal.title,modifier=Modifier.weight(1f))
+                            Text("↕",color=Muted)
+                        }
+                    }
+                }
+            }
+        }},
+        confirmButton={TextButton(onClick={vm.reorderGoals(schedule,ordered.map {it.id},onSaved=onDismiss)},enabled=!vm.busy&&draggedId==null) {Text("순서 저장")}},
+        dismissButton={TextButton(onClick=onDismiss,enabled=!vm.busy) {Text("취소")}})
+}

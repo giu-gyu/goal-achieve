@@ -23,6 +23,8 @@ try {
     if ($taskJdk) { $env:JAVA_HOME = $taskJdk.FullName }
     $env:GRADLE_USER_HOME = Join-Path $taskRoot '.tools/gradle-cache'
     $env:ANDROID_HOME = Join-Path $taskRoot '.tools/android-sdk'
+    $env:ANDROID_USER_HOME = Join-Path $taskRoot '.tools/android-user-home'
+    New-Item -ItemType Directory -Force -Path $env:ANDROID_USER_HOME | Out-Null
     if (!(Test-Path -LiteralPath "$env:JAVA_HOME/bin/java.exe")) { throw 'JDK 17 is required. Set JAVA_HOME.' }
     $taskGradle = Join-Path $taskRoot '.tools/gradle/gradle-8.11.1/bin/gradle.bat'
     if (!(Test-Path -LiteralPath $taskGradle)) { throw 'Prepare Gradle 8.11.1 under .tools/gradle.' }

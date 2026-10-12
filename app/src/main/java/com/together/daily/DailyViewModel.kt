@@ -36,14 +36,15 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
     var busy by mutableStateOf(false); private set
     var ready by mutableStateOf(false); private set
     var error by mutableStateOf<String?>(null); private set
+    var memoStatus by mutableStateOf<String?>(null); private set
     var offline by mutableStateOf(false); private set
     private val listeners = mutableListOf<ListenerRegistration>()
     init { if (uid.isNotEmpty()) loadProfile() }
     fun clearError() { error = null }
-    private fun work(block: suspend () -> Unit) {
+    private fun work(onFailure: (String) -> Unit = {}, block: suspend () -> Unit) {
         if (busy) return
+        busy = true; error = null
         viewModelScope.launch {
-            busy = true; error = null
             try { withTimeout(20_000) { block() } } catch (e: Exception) {
                 error = if (e is TimeoutCancellationException) "연결 응답이 늦어지고 있어요. 기록 저장을 요청했다면 연결 복구 후 반영될 수 있어요. 표시된 기록을 확인해주세요." else when ((e as? FirebaseAuthException)?.errorCode) {
                     "ERROR_INVALID_EMAIL" -> "이메일 주소를 확인해주세요."
@@ -52,6 +53,7 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
                     "ERROR_INVALID_CREDENTIAL", "ERROR_WRONG_PASSWORD", "ERROR_USER_NOT_FOUND" -> "이메일 또는 비밀번호를 확인해주세요."
                     else -> e.localizedMessage ?: "연결에 실패했어요. 인터넷 연결을 확인하고 다시 시도해주세요."
                 }
+                onFailure(error ?: "저장하지 못했어요.")
             } finally { busy = false }
         }
     }
@@ -110,8 +112,9 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
             if (e != null) { error = "커플 정보를 불러오지 못했어요."; return@addSnapshotListener }
             names = (snapshot?.get("names") as? Map<*, *>)?.entries?.associate { it.key.toString() to it.value.toString() }.orEmpty()
         }
-        listeners += pair.collection("memos").addSnapshotListener { snapshot,e ->
+        listeners += pair.collection("memos").addSnapshotListener(com.google.firebase.firestore.MetadataChanges.INCLUDE) { snapshot,e ->
             if(e!=null) {error="메모를 불러오지 못했습니다. Firebase 규칙을 확인하세요.";return@addSnapshotListener}
+            if(snapshot?.metadata?.hasPendingWrites()==true) return@addSnapshotListener
             memos=snapshot?.documents?.mapNotNull {doc -> runCatching {DailyMemo(doc.getString("ownerId")!!,LocalDate.parse(doc.getString("date")),doc.getString("text")!!)}.getOrNull()}.orEmpty()
         }
         listeners += pair.collection("profiles").addSnapshotListener {snapshot,e ->
@@ -122,7 +125,9 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
             if (e != null) { error = "목표를 불러오지 못했어요. 연결을 확인해주세요."; return@addSnapshotListener }
             goals = snapshot?.documents?.mapNotNull { doc ->
                 runCatching { Goal(doc.id, doc.getString("ownerId")!!, doc.getString("title")!!,
-                    LocalDate.parse(doc.getString("start")), doc.getString("end")?.let { LocalDate.parse(it) },doc.getLong("order")?.toInt()?:Int.MAX_VALUE) }.getOrNull()
+                    LocalDate.parse(doc.getString("start")), doc.getString("end")?.let { LocalDate.parse(it) },doc.getLong("order")?.toInt()?:Int.MAX_VALUE,
+                    doc.getString("schedule")?.let { runCatching { GoalSchedule.valueOf(it) }.getOrNull() } ?: GoalSchedule.WEEKDAY,
+                    doc.getLong("weeklyTarget")?.toInt()?.takeIf { it in 1..7 }) }.getOrNull()
             }?.sortedWith(compareBy<Goal> { it.order }.thenBy { it.start }.thenBy { it.title }).orEmpty()
 
         }
@@ -135,11 +140,31 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
 
         }
     }
-    fun saveMemo(date:LocalDate,text:String)=work {
-        require(text.length<=2000 && date<=koreaToday())
-        if(demo) {memos=memos.filterNot {it.ownerId==uid&&it.date==date}+if(text.isBlank())emptyList() else listOf(DailyMemo(uid,date,text.trim()));return@work}
-        val ref=db!!.collection("pairs").document(pairId).collection("memos").document(uid+"_"+date)
-        if(text.isBlank())ref.delete().await() else ref.set(mapOf("ownerId" to uid,"date" to date.toString(),"text" to text.trim())).await()
+    private val memoDraftStore = application.getSharedPreferences("memo_drafts", android.content.Context.MODE_PRIVATE)
+    fun memoDraft(date:LocalDate):String? = memoDraftStore.getString(uid+"_"+date,null)
+    fun editMemoDraft(date:LocalDate,text:String) {
+        memoDraftStore.edit().putString(uid+"_"+date,text).apply()
+        if(!busy) memoStatus=null
+    }
+    fun saveMemo(date:LocalDate,text:String,onSaved:()->Unit = {}) = work(onFailure={ message ->
+        memoStatus = if (message.contains("PERMISSION_DENIED", ignoreCase=true) || message.contains("permission", ignoreCase=true))
+            "저장 권한이 거부됐어요. Firebase에 최신 규칙이 게시됐는지 확인해주세요. 입력한 메모는 유지됩니다."
+        else "서버 저장을 확인하지 못했어요. 입력한 메모는 보관했습니다. 연결 복구 후 기록을 확인해주세요."
+    }) {
+        require(text.length<=2000 && date<=koreaToday()) { "메모는 오늘까지, 2000자 이하로 입력해주세요." }
+        memoStatus = "메모 저장 중…"
+        val clean = text.trim()
+        if (!demo) {
+            require(uid.isNotBlank() && pairId.isNotBlank()) { "로그인과 커플 연결을 확인해주세요." }
+            val ref=db!!.collection("pairs").document(pairId).collection("memos").document(uid+"_"+date)
+            if(clean.isBlank()) ref.delete().await()
+            else ref.set(mapOf("ownerId" to uid,"date" to date.toString(),"text" to clean)).await()
+        }
+        memos=memos.filterNot {it.ownerId==uid&&it.date==date} +
+            if(clean.isBlank()) emptyList() else listOf(DailyMemo(uid,date,clean))
+        memoStatus = if(clean.isBlank()) "메모를 삭제했어요." else "메모를 저장했어요."
+        if(memoDraft(date)==text) memoDraftStore.edit().remove(uid+"_"+date).apply()
+        onSaved()
     }
     fun saveProfile(name:String,bio:String,resolve:String)=work {
         require(name.trim().length in 1..20&&bio.length<=200&&resolve.length<=200)
@@ -150,37 +175,54 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         batch.set(pair.collection("profiles").document(uid),mapOf("bio" to bio.trim(),"resolve" to resolve.trim()))
         batch.commit().await()
     }
-    fun addGoal(title:String,position:Int?=null)=work {
+    fun addGoal(title:String,position:Int?=null,schedule:GoalSchedule=if(KoreanHolidays.isRestDay(koreaToday())) GoalSchedule.WEEKEND else GoalSchedule.WEEKDAY,weeklyTarget:Int?=null,onSaved:()->Unit={})=work {
         require(title.trim().length in 1..60) {"목표는 1~60자로 입력해주세요."}
-        val own=goals.filter {it.ownerId==uid}.toMutableList()
-        require(own.size<450) {"목표는 최대 450개까지 등록할 수 있습니다."}
+        require(weeklyTarget==null || weeklyTarget in 1..7) { "주당 횟수는 1~7회로 설정해주세요." }
+        val own=goals.filter {it.ownerId==uid&&it.schedule==schedule}.toMutableList()
+        require(goals.count {it.ownerId==uid}<450) {"목표는 최대 450개까지 등록할 수 있습니다."}
         val index=(position?:own.size).coerceIn(0,own.size)
         val ref=if(demo)null else db!!.collection("pairs").document(pairId).collection("goals").document()
-        val new=Goal(ref?.id?:UUID.randomUUID().toString(),uid,title.trim(),koreaToday())
+        val new=Goal(ref?.id?:UUID.randomUUID().toString(),uid,title.trim(),koreaToday(),schedule=schedule,weeklyTarget=weeklyTarget)
         own.add(index,new)
         val ordered=own.mapIndexed {i,g->g.copy(order=i)}
-        if(demo) {goals=goals.filterNot {it.ownerId==uid}+ordered;return@work}
+        if(demo) {goals=goals.filterNot {it.ownerId==uid&&it.schedule==schedule}+ordered;onSaved();return@work}
         val batch=db!!.batch()
         ordered.forEach {g ->
-            if(g.id==new.id)batch.set(ref!!,mapOf("ownerId" to uid,"title" to g.title,"start" to g.start.toString(),"end" to null,"order" to g.order))
+            if(g.id==new.id)batch.set(ref!!,mapOf("ownerId" to uid,"title" to g.title,"start" to g.start.toString(),"end" to null,"order" to g.order,"schedule" to g.schedule.name,"weeklyTarget" to g.weeklyTarget))
             else batch.update(ref!!.parent.document(g.id),"order",g.order)
         }
         batch.commit().await()
+        onSaved()
     }
     fun moveGoal(goal:Goal,direction:Int)=work {
         require(goal.ownerId==uid&&direction in listOf(-1,1))
-        val own=goals.filter {it.ownerId==uid}.toMutableList()
+        val schedule=goal.schedule
+        val own=goals.filter {it.ownerId==uid&&it.schedule==schedule}.toMutableList()
         require(own.size<=450)
         val index=own.indexOfFirst {it.id==goal.id}
         val target=index+direction
         if(index<0||target !in own.indices)return@work
         own.removeAt(index);own.add(target,goal)
         val ordered=own.mapIndexed {i,g->g.copy(order=i)}
-        if(demo) {goals=goals.filterNot {it.ownerId==uid}+ordered;return@work}
+        if(demo) {goals=goals.filterNot {it.ownerId==uid&&it.schedule==schedule}+ordered;return@work}
         val refs=db!!.collection("pairs").document(pairId).collection("goals")
         val batch=db.batch()
         ordered.forEach {batch.update(refs.document(it.id),"order",it.order)}
         batch.commit().await()
+    }
+    fun reorderGoals(schedule:GoalSchedule,ids:List<String>,onSaved:()->Unit) = work {
+        val own=goals.filter {it.ownerId==uid&&it.schedule==schedule}
+        require(ids.size==own.size&&ids.toSet()==own.map {it.id}.toSet()) {"목표 목록이 변경됐어요. 다시 순서를 설정해주세요."}
+        require(ids.size<=450)
+        val byId=own.associateBy {it.id}
+        val ordered=ids.mapIndexed {index,id->byId.getValue(id).copy(order=index)}
+        if(demo) {goals=goals.filterNot {it.ownerId==uid&&it.schedule==schedule}+ordered;onSaved();return@work}
+        val refs=db!!.collection("pairs").document(pairId).collection("goals")
+        val batch=db.batch()
+        ordered.forEach {batch.update(refs.document(it.id),"order",it.order)}
+        batch.commit().await()
+        goals=goals.map {goal->ordered.firstOrNull {it.id==goal.id}?:goal}.sortedBy {it.order}
+        onSaved()
     }
     fun renameGoal(goal: Goal, title: String) = work {
         require(goal.ownerId == uid)
@@ -191,6 +233,15 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         }
         db!!.collection("pairs").document(pairId).collection("goals").document(goal.id)
             .update("title", title.trim()).await()
+    }
+    fun configureGoal(goal:Goal,schedule:GoalSchedule,weeklyTarget:Int?) = work {
+        require(goal.ownerId==uid && (weeklyTarget==null || weeklyTarget in 1..7))
+        if(demo) {
+            goals=goals.map {if(it.id==goal.id) it.copy(schedule=schedule,weeklyTarget=weeklyTarget) else it}
+        } else {
+            db!!.collection("pairs").document(pairId).collection("goals").document(goal.id)
+                .update(mapOf("schedule" to schedule.name,"weeklyTarget" to weeklyTarget)).await()
+        }
     }
     fun deleteGoal(goal: Goal) = work {
         require(goal.ownerId == uid)
@@ -232,7 +283,7 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         if (busy) return
         listeners.forEach { it.remove() }; listeners.clear()
         auth?.signOut(); demo = false; uid = ""; pairId = ""; names = emptyMap(); goals = emptyList(); entries = emptyList()
-        ready = false; offline = false; error = null; memos=emptyList();profiles=emptyMap()
+        ready = false; offline = false; error = null; memoStatus = null; memos=emptyList();profiles=emptyMap()
     }
     fun startDemo() {
         demo = true; uid = "me"; pairId = "demo"; ready = true
