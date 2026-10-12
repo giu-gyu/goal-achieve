@@ -15,6 +15,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
@@ -170,6 +171,7 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
     val goals=vm.goals.filter {it.ownerId==ownerId&&it.schedule==schedule&&it.start<=end&&(it.end==null||it.end>=start)}
     val records=vm.entries.associateBy {it.goalId to it.date}
     val days=generateSequence(start){it.plusDays(1)}.takeWhile {it<=end}.filter {vm.scheduleFor(it)==schedule}.toList()
+    val weekBoundaries=days.zipWithNext().filter {(previous,next)->weekStart(previous)!=weekStart(next)}.map {it.second}.toSet()
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)) {
         Text(name,fontSize=14.sp,fontWeight=FontWeight.Bold,color=palette.accent)
         BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -179,7 +181,7 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).background(palette.header)) {
                 Box(Modifier.weight(3f).fillMaxHeight().padding(4.dp),contentAlignment=Alignment.CenterStart) {Text("목표",fontSize=12.sp)}
                 days.forEachIndexed {i,day ->
-                    Column(Modifier.weight(1f).border(.5.dp,palette.border).padding(vertical=2.dp),horizontalAlignment=Alignment.CenterHorizontally) {
+                    Column(Modifier.weight(1f).border(.5.dp,palette.border).weekBoundary(day in weekBoundaries,palette.accent).padding(vertical=2.dp),horizontalAlignment=Alignment.CenterHorizontally) {
                         Text(androidx.compose.ui.text.buildAnnotatedString {
                             pushStyle(androidx.compose.ui.text.SpanStyle(fontSize=12.sp,fontWeight=FontWeight.Bold))
                             append(day.dayOfMonth.toString());pop();append("\n")
@@ -198,7 +200,7 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
                         val done=records[goal.id to day]?.done
                         val applicable=goal.scheduled(day)&&day<=today
                         val label=if(!applicable||done==null) "" else if(done) "O" else "X"
-                        Box(Modifier.weight(1f).fillMaxHeight().heightIn(min=24.dp).border(.5.dp,palette.border).background(if(day==today)palette.header else palette.cell),contentAlignment=Alignment.Center) {
+                        Box(Modifier.weight(1f).fillMaxHeight().heightIn(min=24.dp).border(.5.dp,palette.border).background(if(day==today)palette.header else palette.cell).weekBoundary(day in weekBoundaries,palette.accent),contentAlignment=Alignment.Center) {
                             Text(label,fontSize=14.sp,fontWeight=FontWeight.Bold,color=if(done==true)Color(0xFF1565C0) else Color(0xFFC62828))
                         }
                     }
@@ -209,7 +211,7 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
                 Box(Modifier.weight(3f).fillMaxHeight().border(.5.dp,palette.border).padding(4.dp)) {Text("당일 완료율",fontSize=11.sp)}
                 days.forEach {day ->
                     val value=daySuccessPercent(goals,vm.entries,day,today)
-                    Box(Modifier.weight(1f).fillMaxHeight().heightIn(min=24.dp).border(.5.dp,palette.border),contentAlignment=Alignment.Center) {Text(value?.let {"$it%"}?:"",fontSize=9.sp)}
+                    Box(Modifier.weight(1f).fillMaxHeight().heightIn(min=24.dp).border(.5.dp,palette.border).weekBoundary(day in weekBoundaries,palette.accent),contentAlignment=Alignment.Center) {Text(value?.let {"$it%"}?:"",fontSize=9.sp)}
                 }
                 Box(Modifier.weight(1.25f).fillMaxHeight().border(.5.dp,palette.border),contentAlignment=Alignment.Center) {Text("기간",fontSize=10.sp)}
             }
@@ -294,4 +296,10 @@ private fun ConnectionStatus(vm:DailyViewModel,onLogout:()->Unit) {
     if(logout) AlertDialog(onDismissRequest={logout=false},title={Text("로그아웃할까요?")},
         confirmButton={TextButton(onClick={logout=false;onLogout()},enabled=!vm.busy){Text("로그아웃")}},
         dismissButton={TextButton(onClick={logout=false}){Text("취소")}})
+}
+
+private fun Modifier.weekBoundary(visible:Boolean,color:Color):Modifier = if(!visible)this else drawWithContent {
+    drawContent()
+    drawLine(color=color,start=androidx.compose.ui.geometry.Offset(1.25.dp.toPx(),0f),
+        end=androidx.compose.ui.geometry.Offset(1.25.dp.toPx(),size.height),strokeWidth=2.5.dp.toPx())
 }
