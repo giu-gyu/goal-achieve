@@ -312,7 +312,7 @@ internal fun GoalTile(goal:Goal,done:Boolean?,editable:Boolean,onRecord:(Boolean
             }
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(5.dp)) {
                 Text(goal.title,fontSize=15.sp,fontWeight=FontWeight.SemiBold,lineHeight=22.sp)
-                Text("${goal.schedule.label} · ${goal.frequencyLabel}",fontSize=11.sp,color=Muted)
+                Text(listOf(goal.schedule.label,goal.frequencyLabel).filter {it.isNotBlank()}.joinToString(" · "),fontSize=11.sp,color=Muted)
             }
             if(editable&&(done!=null||onEnd!=null)) Box {
                 IconButton(onClick={menu=true},modifier=Modifier.size(32.dp)) {Mark(Symbol.More,color=Muted,description="목표 메뉴")}

@@ -11,7 +11,7 @@ enum class GoalSchedule(val label: String) {
 }
 
 data class Goal(val id: String, val ownerId: String, val title: String, val start: LocalDate, val end: LocalDate? = null, val order:Int=Int.MAX_VALUE, val schedule:GoalSchedule=GoalSchedule.WEEKDAY, val weeklyTarget:Int?=null, val dateSchedules:Map<LocalDate,GoalSchedule> = emptyMap(), val colorIndex:Int?=null) {
-    val frequencyLabel get() = weeklyTarget?.let { "주 ${it}회" } ?: "해당 요일마다"
+    val frequencyLabel get() = weeklyTarget?.let { "주 ${it}회" } ?: ""
     fun scheduled(date: LocalDate) = date >= start && (end == null || date <= end) && schedule == scheduleForDate(date,dateSchedules)
 }
 fun scheduleForDate(date:LocalDate,overrides:Map<LocalDate,GoalSchedule> = emptyMap()):GoalSchedule =
