@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -131,7 +132,7 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
                     }.sortedBy {it.date}
                     if(memos.isNotEmpty()) {
                         Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
-                            memos.forEach {memo->RecordMemoCard(memo,memberPalette)}
+                            memos.forEach {memo->RecordMemoCard(vm,memo,memberPalette)}
                         }
                     }
                 }
@@ -158,12 +159,25 @@ private fun sectionPalette(schedule:GoalSchedule)=if(schedule==GoalSchedule.WEEK
 else RecordPalette(Ink,Color(0xFFF0F3F6),Color.White,Color(0xFFD5DDE5),Color.White)
 
 @Composable
-private fun RecordMemoCard(memo:DailyMemo,palette:RecordPalette) {
-    Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(10.dp),color=Color.White,
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private fun RecordMemoCard(vm:DailyViewModel,memo:DailyMemo,palette:RecordPalette) {
+    var editing by remember {mutableStateOf(false)}
+    var draft by rememberSaveable(memo.ownerId,memo.date.toString()) {mutableStateOf(memo.text)}
+    val editable=memo.ownerId==vm.uid&&memo.date<=koreaToday()
+    val editModifier=if(editable)Modifier.combinedClickable(enabled=!vm.busy,onClick={},onLongClick={draft=memo.text;editing=true}) else Modifier
+    Surface(modifier=Modifier.fillMaxWidth().then(editModifier),shape=RoundedCornerShape(10.dp),color=Color.White,
         border=androidx.compose.foundation.BorderStroke(1.dp,palette.border)) {
         Text("${memo.date.format(java.time.format.DateTimeFormatter.ofPattern("M/d (E)",java.util.Locale.KOREAN))}  ${memo.text}",
             modifier=Modifier.padding(horizontal=10.dp,vertical=7.dp),fontSize=12.sp,lineHeight=18.sp,color=Ink)
     }
+    if(editing) AlertDialog(onDismissRequest={if(!vm.busy)editing=false},containerColor=Cream,
+        title={Text("${memo.date.monthValue}/${memo.date.dayOfMonth} 메모 편집")},
+        text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(draft,{if(it.length<=2000)draft=it},enabled=!vm.busy,minLines=2,maxLines=6,modifier=Modifier.fillMaxWidth())
+            vm.memoStatus?.takeUnless {it=="메모를 저장했어요."||it=="메모를 삭제했어요."}?.let {Text(it,color=Muted,fontSize=12.sp)}
+        }},
+        confirmButton={TextButton(onClick={vm.saveMemo(memo.date,draft,onSaved={editing=false})},enabled=!vm.busy&&draft.trim()!=memo.text) {Text("저장")}},
+        dismissButton={TextButton(onClick={editing=false},enabled=!vm.busy) {Text("취소")}})
 }
 @Composable
 private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:LocalDate,end:LocalDate,today:LocalDate,schedule:GoalSchedule) {
