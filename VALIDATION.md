@@ -80,3 +80,9 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - assembleDebug + testDebugUnitTest + lintDebug 성공. 단위 테스트 24/24 통과, Android Lint 오류 0. 새 UI의 실기기 터치 검증 및 설치는 미수행.
 - 목표 색상 저장·조회 범위를 GoalPalettes.indices로 확장하고 기존 6색 인덱스 유지. Firebase 규칙 변경 없음.
 - artifacts/together-daily.apk 및 쏘규-Daily-챌린지.apk 갱신.
+## 반복 안내·목표 색상 제거 (2026-10-12)
+
+- 6364f99: 오늘·기록·달성률의 횟수 미설정 목표 안내를 제거하고 빈 줄·구분점을 정리. 횟수 지정 목표의 주 N회 표시는 유지.
+- ce77fd3: 목표 색상 설정·모델·팔레트·저장/조회 및 개별 카드 적용 제거. 기록의 성별 테이블 색상 유지. 원격 기존 색상 필드 삭제 없음.
+- assembleDebug + testDebugUnitTest + lintDebug 성공. 기존 단위 테스트 24/24 통과, Lint 오류 0. 실기기 설치·UI 검증은 미수행.
+- 최신 artifacts/together-daily.apk 및 쏘규-Daily-챌린지.apk 갱신.
