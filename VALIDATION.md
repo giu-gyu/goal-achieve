@@ -74,3 +74,9 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - 요청별 독립 커밋: 1 bf5ec52 (날짜+본문 메모 행), 2 3034165 (빈 목표 테이블 유지), 3 1ef779a (성별 표 색상 및 배경), 4 aa84d8e (프로필 성별/인물 선택 및 이름 표시).
 - 로컬 Firestore 에뮬레이터 검사 58/58 통과. 남녀 성별·인물 스타일의 두 계정 저장/공유 조회, 기존 자기소개 유지, 외부 계정 접근 차단 검증. 테스트 커밋 d036d90. 서버 규칙 변경 및 실제 Firebase 데이터 수정 없음.
 - assembleDebug + testDebugUnitTest + lintDebug 성공. 단위 테스트 24/24 통과, Lint 오류 0. 실기기에서 추가 수정 UI 확인은 미수행.
+## 정렬 수동 스크롤·오늘 전환·20색 팔레트 (2026-10-12)
+
+- 요청별 커밋: c5fd494 (가장자리 자동 스크롤 제거), 9b0b102 (정렬 창 98% 확장 및 카드 양옆 수동 스크롤 영역), e03968b (오늘 반대 분류 전환 문구/버튼), 8a3cabd (목표별 분류 선택 제거), fc290ec (20색 밀착 사각형 선택).
+- assembleDebug + testDebugUnitTest + lintDebug 성공. 단위 테스트 24/24 통과, Android Lint 오류 0. 새 UI의 실기기 터치 검증 및 설치는 미수행.
+- 목표 색상 저장·조회 범위를 GoalPalettes.indices로 확장하고 기존 6색 인덱스 유지. Firebase 규칙 변경 없음.
+- artifacts/together-daily.apk 및 쏘규-Daily-챌린지.apk 갱신.
