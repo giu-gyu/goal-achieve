@@ -341,7 +341,7 @@ private fun GoalSettings(schedule:GoalSchedule,target:Int?,enabled:Boolean,onSch
                 TextButton(onClick={onTarget(target+1)},enabled=enabled&&target<7){Text("+")}
             }
             Text("월~일 기준 · 하루 완료 1회 · 초과 달성은 100%\n선택한 분류의 날짜에만 완료를 기록해요.",fontSize=11.sp,color=Muted)
-        } else Text("선택한 분류의 날짜마다 수행해요.",fontSize=11.sp,color=Muted)
+        }
     }
 }
 
