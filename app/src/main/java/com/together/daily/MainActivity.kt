@@ -258,17 +258,17 @@ private fun GoalEditor(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,o
                         var colorIndex by rememberSaveable(goal.colorIndex) {mutableIntStateOf(goalColorIndex(goal))}
                         val palette=GoalPalettes[colorIndex]
                         var title by rememberSaveable(goal.title) {mutableStateOf(goal.title)}
-                        var selectedSchedule by rememberSaveable(goal.schedule) {mutableStateOf(goal.schedule)}
+
                         var target by rememberSaveable(goal.weeklyTarget) {mutableStateOf(goal.weeklyTarget)}
                         Column(Modifier.fillMaxWidth().background(palette.background,RoundedCornerShape(14.dp))
                             .border(1.dp,palette.accent.copy(alpha=.3f),RoundedCornerShape(14.dp)).padding(8.dp),verticalArrangement=Arrangement.spacedBy(2.dp)) {
                             OutlinedTextField(title,{if(it.length<=60)title=it},placeholder={Text("목표 이름")},singleLine=true,
                                 enabled=!vm.busy,shape=RoundedCornerShape(10.dp),modifier=Modifier.fillMaxWidth())
-                            GoalSettings(selectedSchedule,target,!vm.busy,onSchedule={selectedSchedule=it},onTarget={target=it})
+                            GoalSettings(goal.schedule,target,!vm.busy,onSchedule={},onTarget={target=it},showSchedule=false)
                             GoalColorPicker(colorIndex,!vm.busy) {colorIndex=it}
                             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.End) {
-                                TextButton(onClick={vm.updateGoal(goal,title,selectedSchedule,target,colorIndex)},
-                                    enabled=!vm.busy&&title.isNotBlank()&&(title.trim()!=goal.title||selectedSchedule!=goal.schedule||target!=goal.weeklyTarget||colorIndex!=goalColorIndex(goal)),
+                                TextButton(onClick={vm.updateGoal(goal,title,goal.schedule,target,colorIndex)},
+                                    enabled=!vm.busy&&title.isNotBlank()&&(title.trim()!=goal.title||target!=goal.weeklyTarget||colorIndex!=goalColorIndex(goal)),
                                     contentPadding=PaddingValues(horizontal=10.dp,vertical=0.dp),modifier=Modifier.height(32.dp)) {Text("저장",fontSize=12.sp)}
                                 TextButton(onClick={deleting=goal},enabled=!vm.busy,contentPadding=PaddingValues(horizontal=10.dp,vertical=0.dp),modifier=Modifier.height(32.dp)) {Text("삭제",fontSize=12.sp)}
                             }
