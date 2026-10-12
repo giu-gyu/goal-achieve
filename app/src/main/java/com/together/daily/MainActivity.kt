@@ -183,7 +183,6 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,on
         LinearProgressIndicator(progress={if(list.isEmpty())0f else done.toFloat()/list.size},modifier=Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),color=Coral,trackColor=Color.White.copy(alpha=.8f),drawStopIndicator={})
     }
 
-    Text("오늘은 ${if(KoreanHolidays.isRestDay(today)) "주말·공휴일" else "평일"}입니다. 완료는 해당 날짜의 목표에 기록해요.",fontSize=11.sp,color=Muted)
     OwnerSwitch(vm,owner){owner=it}
     if(list.isEmpty()) Text("오늘 등록된 목표가 없습니다.",color=Muted,fontSize=14.sp)
     list.forEach {goal -> GoalTile(goal,vm.entries.find {it.goalId==goal.id&&it.date==today}?.done,
