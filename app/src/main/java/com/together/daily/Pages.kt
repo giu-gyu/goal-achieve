@@ -93,7 +93,7 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
     var weekOffset by rememberSaveable {mutableLongStateOf(0L)}
     val start=if(monthly)today.withDayOfMonth(1).plusMonths(weekOffset) else weekStart(today).plusWeeks(weekOffset)
     val end=if(monthly)YearMonth.from(start).atEndOfMonth() else start.plusDays(6)
-    Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)) {
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
         TextButton(onClick={monthly=false;weekOffset=0},modifier=Modifier.height(32.dp)) {Text("주간",fontSize=12.sp,color=if(!monthly)Coral else Muted)}
         TextButton(onClick={monthly=true;weekOffset=0},modifier=Modifier.height(32.dp)) {Text("월간",fontSize=12.sp,color=if(monthly)Coral else Muted)}
@@ -111,13 +111,13 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
         val palette=sectionPalette(schedule)
         Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(24.dp),color=palette.background,
             border=androidx.compose.foundation.BorderStroke(1.dp,palette.border)) {
-            Column(Modifier.padding(horizontal=12.dp,vertical=16.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+            Column(Modifier.padding(horizontal=12.dp,vertical=8.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically) {
                     HorizontalDivider(Modifier.weight(1f),color=palette.border)
-                    Row(Modifier.padding(horizontal=12.dp).background(palette.header,RoundedCornerShape(50)).padding(horizontal=18.dp,vertical=9.dp),
+                    Row(Modifier.padding(horizontal=12.dp).background(palette.header,RoundedCornerShape(50)).padding(horizontal=18.dp,vertical=5.dp),
                         horizontalArrangement=Arrangement.spacedBy(7.dp),verticalAlignment=Alignment.CenterVertically) {
                         Mark(if(schedule==GoalSchedule.WEEKDAY)Symbol.Calendar else Symbol.Leaf,color=palette.accent,modifier=Modifier.size(18.dp))
-                        Text(schedule.label,fontSize=16.sp,fontWeight=FontWeight.Bold,color=palette.accent,textAlign=TextAlign.Center)
+                        Text(schedule.label,fontSize=14.sp,fontWeight=FontWeight.Bold,color=palette.accent,textAlign=TextAlign.Center)
                     }
                     HorizontalDivider(Modifier.weight(1f),color=palette.border)
                 }
@@ -129,14 +129,14 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
                         it.ownerId==member.key&&it.date>=start&&it.date<=end&&vm.scheduleFor(it.date)==schedule&&it.text.isNotBlank()
                     }.sortedBy {it.date}
                     if(memos.isNotEmpty()) {
-                        Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                        Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
                             memos.forEach {memo->RecordMemoCard(memo,memberPalette)}
                         }
                     }
                 }
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(2.dp))
     }
     if(start.year<KoreanHolidays.FIRST_SUPPORTED_YEAR || end.year>KoreanHolidays.LAST_SUPPORTED_YEAR) Text("이 연도의 설·추석·대체공휴일은 아직 반영되지 않았어요. 공휴일 데이터 업데이트가 필요합니다.",fontSize=11.sp,color=Muted)
     if(members.size<2) Text("상대방이 연결되면 주간 기록이 여기에 표시됩니다.",color=Muted,fontSize=12.sp)
@@ -179,9 +179,14 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).background(palette.header)) {
                 Box(Modifier.weight(3f).fillMaxHeight().padding(4.dp),contentAlignment=Alignment.CenterStart) {Text("목표",fontSize=12.sp)}
                 days.forEachIndexed {i,day ->
-                    Column(Modifier.weight(1f).border(.5.dp,palette.border).padding(vertical=3.dp),horizontalAlignment=Alignment.CenterHorizontally) {
-                        Text(listOf("월","화","수","목","금","토","일")[day.dayOfWeek.value-1],fontSize=11.sp)
-                        Text(day.dayOfMonth.toString(),fontSize=10.sp,color=if(day==today)palette.accent else Muted)
+                    Column(Modifier.weight(1f).border(.5.dp,palette.border).padding(vertical=2.dp),horizontalAlignment=Alignment.CenterHorizontally) {
+                        Text(androidx.compose.ui.text.buildAnnotatedString {
+                            pushStyle(androidx.compose.ui.text.SpanStyle(fontSize=12.sp,fontWeight=FontWeight.Bold))
+                            append(day.dayOfMonth.toString());pop();append("\n")
+                            pushStyle(androidx.compose.ui.text.SpanStyle(fontSize=9.sp))
+                            append(listOf("월","화","수","목","금","토","일")[day.dayOfWeek.value-1]);pop()
+                        },lineHeight=12.sp,textAlign=TextAlign.Center,color=if(day==today)palette.accent else Muted,
+                            style=androidx.compose.ui.text.TextStyle(platformStyle=androidx.compose.ui.text.PlatformTextStyle(includeFontPadding=false)))
                     }
                 }
                 Box(Modifier.weight(1.25f).fillMaxHeight().border(.5.dp,palette.border),contentAlignment=Alignment.Center) {Text("달성률",fontSize=10.sp)}
@@ -193,7 +198,7 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
                         val done=records[goal.id to day]?.done
                         val applicable=goal.scheduled(day)&&day<=today
                         val label=if(!applicable||done==null) "" else if(done) "O" else "X"
-                        Box(Modifier.weight(1f).fillMaxHeight().heightIn(min=28.dp).border(.5.dp,palette.border).background(if(day==today)palette.header else palette.cell),contentAlignment=Alignment.Center) {
+                        Box(Modifier.weight(1f).fillMaxHeight().heightIn(min=24.dp).border(.5.dp,palette.border).background(if(day==today)palette.header else palette.cell),contentAlignment=Alignment.Center) {
                             Text(label,fontSize=14.sp,fontWeight=FontWeight.Bold,color=if(done==true)Color(0xFF1565C0) else Color(0xFFC62828))
                         }
                     }
@@ -204,7 +209,7 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
                 Box(Modifier.weight(3f).fillMaxHeight().border(.5.dp,palette.border).padding(4.dp)) {Text("당일 완료율",fontSize=11.sp)}
                 days.forEach {day ->
                     val value=daySuccessPercent(goals,vm.entries,day,today)
-                    Box(Modifier.weight(1f).fillMaxHeight().heightIn(min=28.dp).border(.5.dp,palette.border),contentAlignment=Alignment.Center) {Text(value?.let {"$it%"}?:"",fontSize=9.sp)}
+                    Box(Modifier.weight(1f).fillMaxHeight().heightIn(min=24.dp).border(.5.dp,palette.border),contentAlignment=Alignment.Center) {Text(value?.let {"$it%"}?:"",fontSize=9.sp)}
                 }
                 Box(Modifier.weight(1.25f).fillMaxHeight().border(.5.dp,palette.border),contentAlignment=Alignment.Center) {Text("기간",fontSize=10.sp)}
             }
