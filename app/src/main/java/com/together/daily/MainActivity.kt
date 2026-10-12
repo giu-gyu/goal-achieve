@@ -337,26 +337,32 @@ private fun RecordButton(text:String,selected:Boolean,color:Color,bg:Color,symbo
 
 @Composable
 private fun GoalSettings(schedule:GoalSchedule,target:Int?,enabled:Boolean,onSchedule:(GoalSchedule)->Unit,onTarget:(Int?)->Unit,showSchedule:Boolean=true) {
+    var expanded by remember {mutableStateOf(false)}
     Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
         if(showSchedule) Row(verticalAlignment=Alignment.CenterVertically) {
             Text("목표 분류",fontSize=12.sp,modifier=Modifier.weight(1f))
             GoalSchedulePicker(schedule,enabled,onSchedule)
         }
-        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-            Text("주당 횟수 설정",fontSize=11.sp,color=Muted)
-            Row(Modifier.weight(1f),horizontalArrangement=Arrangement.spacedBy(3.dp)) {
+        TextButton(onClick={expanded=!expanded},enabled=enabled,modifier=Modifier.fillMaxWidth().height(32.dp),
+            contentPadding=PaddingValues(horizontal=4.dp,vertical=0.dp)) {
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween) {
+                Text("주당 횟수 설정",fontSize=11.sp,color=Muted)
+                Text("${target?.let {"주 ${it}회"}?:"OFF"} ${if(expanded)"▴" else "▾"}",fontSize=11.sp,color=if(target==null)Muted else Coral)
+            }
+        }
+        if(expanded) {
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(3.dp)) {
                 listOf<Int?>(1,2,3,4,null).forEach {value ->
                     val selected=target==value
                     Box(Modifier.weight(1f).height(32.dp).clip(RoundedCornerShape(8.dp))
                         .background(if(selected)Coral else Color.White.copy(alpha=.7f))
-                        .selectable(selected=selected,enabled=enabled,role=androidx.compose.ui.semantics.Role.RadioButton,onClick={onTarget(value)})
+                        .selectable(selected=selected,enabled=enabled,role=androidx.compose.ui.semantics.Role.RadioButton,onClick={onTarget(value);if(value==null)expanded=false})
                         .semantics {contentDescription=if(value==null)"주당 횟수 비활성화" else "주당 ${value}회"},contentAlignment=Alignment.Center) {
                         Text(value?.toString()?:"X",fontSize=12.sp,color=if(selected)Color.White else Muted,fontWeight=FontWeight.SemiBold)
                     }
                 }
             }
         }
-        if(target!=null&&target>4) Text("기존 설정: 주 ${target}회",fontSize=11.sp,color=Muted)
     }
 }
 @Composable
