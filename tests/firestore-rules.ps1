@@ -130,5 +130,11 @@ Check 'member saves colored goal with disabled frequency' 'alice' 'POST' $commit
 $taskSavedColor=Invoke-RestMethod -Uri "$taskBase/pairs/$taskPair/goals/color" -Headers @{Authorization='Bearer '+(Token 'bob')}
 if($taskSavedColor.fields.colorIndex.integerValue -ne '3' -or -not ($taskSavedColor.fields.weeklyTarget.PSObject.Properties.Name -contains 'nullValue')) {throw 'Goal color or disabled frequency did not persist'}
 Check 'outsider cannot change goal color' 'mallory' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/color" $colorGoal))} 403
+Check 'member saves male emoji profile' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/profiles/alice" @{bio='Hello';resolve='Every day';gender='MALE';emojiStyle=4}))} 200
+Check 'partner saves female emoji profile' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/profiles/bob" @{bio='Hi';resolve='Keep going';gender='FEMALE';emojiStyle=4}))} 200
+$taskMale=Invoke-RestMethod -Uri "$taskBase/pairs/$taskPair/profiles/alice" -Headers @{Authorization='Bearer '+(Token 'bob')}
+$taskFemale=Invoke-RestMethod -Uri "$taskBase/pairs/$taskPair/profiles/bob" -Headers @{Authorization='Bearer '+(Token 'alice')}
+if($taskMale.fields.gender.stringValue -ne 'MALE' -or $taskFemale.fields.gender.stringValue -ne 'FEMALE' -or $taskMale.fields.emojiStyle.integerValue -ne '4' -or $taskFemale.fields.emojiStyle.integerValue -ne '4' -or $taskMale.fields.bio.stringValue -ne 'Hello') {throw 'Profile gender, emoji or biography did not persist'}
+Check 'outsider cannot read emoji profile' 'mallory' 'GET' "$taskBase/pairs/$taskPair/profiles/alice" $null 403
 Check 'partner deletes pair' 'bob' 'DELETE' "$taskBase/pairs/$taskPair" $null 200
 Write-Host "$script:passed security checks passed."
