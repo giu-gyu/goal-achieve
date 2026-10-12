@@ -88,3 +88,6 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - 최신 artifacts/together-daily.apk 및 쏘규-Daily-챌린지.apk 갱신.
 
 주당 횟수 기본 숨김 (8149bbc): 추가·수정 모두 기본 접힘, 설정 버튼으로 펼침/접힘, X 선택 시 OFF 및 접힘. 기존 저장 횟수 유지. assembleDebug/testDebugUnitTest/lintDebug 성공, 단위 테스트 24개 통과, 실기기 설치·터치 검증 미수행.
+
+
+메모 작성자 분리 및 기록 여백 개선: e394e5c는 짝꿍 탭에 내 메모 작성기가 노출되던 오류 수정, 선택 작성자/날짜 조회 및 짝꿍 읽기 전용 표시와 회귀 테스트 추가. a35c414는 날짜 우선·요일 다음 줄 표시, 줄간격/폰트 패딩 및 기록 영역 여백 축소. assembleDebug/testDebugUnitTest/lintDebug 성공, 단위 테스트 26/26 통과. 실제 Firebase 저장 데이터 변경 없음. 실기기 설치·화면 확인 미수행.
