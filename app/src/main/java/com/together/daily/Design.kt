@@ -134,11 +134,11 @@ internal fun StatusPill(text: String, color: Color = Sage, background: Color = M
 }
 
 @Composable
-internal fun Segments(labels: List<String>, selected: Int, modifier: Modifier = Modifier, onSelect: (Int) -> Unit) {
+internal fun Segments(labels: List<String>, selected: Int, modifier: Modifier = Modifier, verticalPadding: androidx.compose.ui.unit.Dp = 13.dp, onSelect: (Int) -> Unit) {
     Row(modifier.fillMaxWidth().background(Line.copy(alpha=.7f),RoundedCornerShape(16.dp)).padding(4.dp),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
         labels.forEachIndexed { i, label ->
             val bg by animateColorAsState(if(i==selected) Color.White else Color.Transparent,label="segment")
-            Box(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(bg).clickable { onSelect(i) }.padding(horizontal=8.dp,vertical=13.dp),contentAlignment=Alignment.Center) {
+            Box(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(bg).clickable { onSelect(i) }.padding(horizontal=8.dp,vertical=verticalPadding),contentAlignment=Alignment.Center) {
                 Text(label,color=if(i==selected) Ink else Muted,fontSize=13.sp,fontWeight=if(i==selected) FontWeight.SemiBold else FontWeight.Normal,maxLines=1)
             }
         }

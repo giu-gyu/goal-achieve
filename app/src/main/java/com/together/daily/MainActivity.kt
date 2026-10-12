@@ -28,6 +28,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -230,41 +233,48 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,on
 private fun GoalEditor(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,onSchedule:(GoalSchedule)->Unit,onAdd:()->Unit,onDismiss:()->Unit) {
     var deleting by remember {mutableStateOf<Goal?>(null)}
     var reordering by remember {mutableStateOf(false)}
-    AlertDialog(onDismissRequest=onDismiss,containerColor=Cream,
-        title={Text("목표 수정",fontWeight=FontWeight.Bold)},
-        text={Column(Modifier.fillMaxWidth().heightIn(max=450.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(14.dp)) {
-            Row(verticalAlignment=Alignment.CenterVertically) {
-                Text("오늘의 분류",fontSize=12.sp,modifier=Modifier.weight(1f))
-                GoalSchedulePicker(vm.scheduleFor(today),!vm.busy) {vm.setDaySchedule(today,it)}
-            }
-            Segments(GoalSchedule.entries.map {it.label},schedule.ordinal) {onSchedule(GoalSchedule.entries[it])}
-            val goals=vm.goals.filter {it.ownerId==vm.uid&&it.schedule==schedule}
-            if(goals.isEmpty()) Text("등록된 목표가 없습니다.",color=Muted)
-            goals.forEach {goal -> key(goal.id) {
-                var colorIndex by rememberSaveable(goal.colorIndex) {mutableIntStateOf(goalColorIndex(goal))}
-                val palette=GoalPalettes[colorIndex]
-                var title by rememberSaveable(goal.title) {mutableStateOf(goal.title)}
-
-                var selectedSchedule by rememberSaveable(goal.schedule) {mutableStateOf(goal.schedule)}
-                var target by rememberSaveable(goal.weeklyTarget) {mutableStateOf(goal.weeklyTarget)}
-                Column(Modifier.fillMaxWidth().background(palette.background,RoundedCornerShape(16.dp)).border(1.dp,palette.accent.copy(alpha=.3f),RoundedCornerShape(16.dp)).padding(12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-                    OutlinedTextField(title,{if(it.length<=60)title=it},label={Text("목표 명칭")},singleLine=true,enabled=!vm.busy,modifier=Modifier.fillMaxWidth())
-                    GoalSettings(selectedSchedule,target,!vm.busy,onSchedule={selectedSchedule=it},onTarget={target=it})
-                    GoalColorPicker(colorIndex,!vm.busy) {colorIndex=it}
-                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                        Spacer(Modifier.weight(1f))
-                        TextButton(onClick={vm.updateGoal(goal,title,selectedSchedule,target,colorIndex)},enabled=!vm.busy&&title.isNotBlank()&&(title.trim()!=goal.title||selectedSchedule!=goal.schedule||target!=goal.weeklyTarget||colorIndex!=goalColorIndex(goal))) {Text("저장")}
-                        TextButton(onClick={deleting=goal},enabled=!vm.busy) {Text("삭제")}
-                    }
+    val goals=vm.goals.filter {it.ownerId==vm.uid&&it.schedule==schedule}
+    val maxHeight=(LocalConfiguration.current.screenHeightDp*.86f).dp
+    Dialog(onDismissRequest=onDismiss,properties=DialogProperties(usePlatformDefaultWidth=false)) {
+        Surface(modifier=Modifier.widthIn(max=440.dp).fillMaxWidth(.94f),shape=RoundedCornerShape(22.dp),color=Cream) {
+            Column(Modifier.heightIn(max=maxHeight).padding(12.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                    Text("목표 수정",fontSize=20.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+                    TextButton(onClick=onDismiss,contentPadding=PaddingValues(horizontal=8.dp,vertical=0.dp),modifier=Modifier.height(32.dp)) {Text("닫기")}
                 }
-            }}
-            OutlinedButton(onClick=onAdd,enabled=!vm.busy,modifier=Modifier.fillMaxWidth()) {Text("목표 추가")}
-            OutlinedButton(onClick={reordering=true},enabled=!vm.busy&&vm.goals.count {it.ownerId==vm.uid&&it.schedule==schedule}>1,modifier=Modifier.fillMaxWidth()) {Text("순서변경")}
-        }},
-        confirmButton={Column {
-
-            TextButton(onClick=onDismiss,modifier=Modifier.align(Alignment.End)) {Text("닫기")}
-        }})
+                Column(Modifier.weight(1f,fill=false).fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                    Row(verticalAlignment=Alignment.CenterVertically) {
+                        Text("오늘의 분류",fontSize=12.sp,modifier=Modifier.weight(1f))
+                        GoalSchedulePicker(vm.scheduleFor(today),!vm.busy) {vm.setDaySchedule(today,it)}
+                    }
+                    Segments(GoalSchedule.entries.map {it.label},schedule.ordinal,verticalPadding=8.dp) {onSchedule(GoalSchedule.entries[it])}
+                    if(goals.isEmpty()) Text("등록된 목표가 없습니다.",color=Muted,modifier=Modifier.padding(vertical=8.dp))
+                    goals.forEach {goal -> key(goal.id) {
+                        var colorIndex by rememberSaveable(goal.colorIndex) {mutableIntStateOf(goalColorIndex(goal))}
+                        val palette=GoalPalettes[colorIndex]
+                        var title by rememberSaveable(goal.title) {mutableStateOf(goal.title)}
+                        var selectedSchedule by rememberSaveable(goal.schedule) {mutableStateOf(goal.schedule)}
+                        var target by rememberSaveable(goal.weeklyTarget) {mutableStateOf(goal.weeklyTarget)}
+                        Column(Modifier.fillMaxWidth().background(palette.background,RoundedCornerShape(14.dp))
+                            .border(1.dp,palette.accent.copy(alpha=.3f),RoundedCornerShape(14.dp)).padding(8.dp),verticalArrangement=Arrangement.spacedBy(2.dp)) {
+                            OutlinedTextField(title,{if(it.length<=60)title=it},placeholder={Text("목표 이름")},singleLine=true,
+                                enabled=!vm.busy,shape=RoundedCornerShape(10.dp),modifier=Modifier.fillMaxWidth())
+                            GoalSettings(selectedSchedule,target,!vm.busy,onSchedule={selectedSchedule=it},onTarget={target=it})
+                            GoalColorPicker(colorIndex,!vm.busy) {colorIndex=it}
+                            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.End) {
+                                TextButton(onClick={vm.updateGoal(goal,title,selectedSchedule,target,colorIndex)},
+                                    enabled=!vm.busy&&title.isNotBlank()&&(title.trim()!=goal.title||selectedSchedule!=goal.schedule||target!=goal.weeklyTarget||colorIndex!=goalColorIndex(goal)),
+                                    contentPadding=PaddingValues(horizontal=10.dp,vertical=0.dp),modifier=Modifier.height(32.dp)) {Text("저장",fontSize=12.sp)}
+                                TextButton(onClick={deleting=goal},enabled=!vm.busy,contentPadding=PaddingValues(horizontal=10.dp,vertical=0.dp),modifier=Modifier.height(32.dp)) {Text("삭제",fontSize=12.sp)}
+                            }
+                        }
+                    }}
+                    OutlinedButton(onClick=onAdd,enabled=!vm.busy,modifier=Modifier.fillMaxWidth().height(40.dp),contentPadding=PaddingValues(0.dp)) {Text("목표 추가")}
+                    OutlinedButton(onClick={reordering=true},enabled=!vm.busy&&goals.size>1,modifier=Modifier.fillMaxWidth().height(40.dp),contentPadding=PaddingValues(0.dp)) {Text("순서변경")}
+                }
+            }
+        }
+    }
     if(reordering) GoalOrderDialog(vm,schedule,onDismiss={reordering=false})
     deleting?.let {goal ->
         AlertDialog(onDismissRequest={deleting=null},title={Text("목표 삭제")},
@@ -273,7 +283,6 @@ private fun GoalEditor(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,o
             dismissButton={TextButton(onClick={deleting=null}) {Text("취소")}})
     }
 }
-
 @Composable
 internal fun EmptyGoals(title:String,subtitle:String,onAdd:(()->Unit)?=null) {
     SoftCard {
