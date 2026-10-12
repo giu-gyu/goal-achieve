@@ -68,3 +68,9 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - 로컬 demo-together Firestore 에뮬레이터 검사 55/55 통과. 날짜 분류 저장·짝꿍 조회·공동 변경, 외부 계정 접근 차단, 목표 색상 및 null 주당 횟수 저장 왕복 확인. 검증 커밋 f002516.
 - firestore.rules 변경 없이 기존 공동 공간 접근 규칙으로 새 저장 필드를 지원함. 실제 Firebase 데이터 수정 및 규칙 배포는 수행하지 않음.
 - 최종 APK: artifacts/together-daily.apk, 쏘규-Daily-챌린지.apk. 기존 개발 서명 및 package com.together.daily 유지. 실기기에서 새 팝업·폭죽·압축 편집 화면 확인은 미수행.
+## 기록 메모 간소화·성별 표 색상·인물 이모티콘 (2026-10-12)
+
+- 작업 시작 전 64ca58a APK를 Galaxy SM-S928N에 데이터 유지 방식으로 업데이트 성공. 이후 수정본은 APK로 준비하며 휴대폰에 설치하지 않음.
+- 요청별 독립 커밋: 1 bf5ec52 (날짜+본문 메모 행), 2 3034165 (빈 목표 테이블 유지), 3 1ef779a (성별 표 색상 및 배경), 4 aa84d8e (프로필 성별/인물 선택 및 이름 표시).
+- 로컬 Firestore 에뮬레이터 검사 58/58 통과. 남녀 성별·인물 스타일의 두 계정 저장/공유 조회, 기존 자기소개 유지, 외부 계정 접근 차단 검증. 테스트 커밋 d036d90. 서버 규칙 변경 및 실제 Firebase 데이터 수정 없음.
+- assembleDebug + testDebugUnitTest + lintDebug 성공. 단위 테스트 24/24 통과, Lint 오류 0. 실기기에서 추가 수정 UI 확인은 미수행.
