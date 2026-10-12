@@ -32,6 +32,7 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
     var goals by mutableStateOf<List<Goal>>(emptyList()); private set
     var dateSchedules by mutableStateOf<Map<LocalDate,GoalSchedule>>(emptyMap()); private set
     fun scheduleFor(date:LocalDate)=scheduleForDate(date,dateSchedules)
+    fun memberLabel(id:String)="${names[id].orEmpty()} ${memberEmoji(profiles[id]?:MemberProfile())}"
     var entries by mutableStateOf<List<Entry>>(emptyList()); private set
     var memos by mutableStateOf<List<DailyMemo>>(emptyList()); private set
     var profiles by mutableStateOf<Map<String,MemberProfile>>(emptyMap()); private set
@@ -121,7 +122,7 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         }
         listeners += pair.collection("profiles").addSnapshotListener {snapshot,e ->
             if(e!=null) {error="프로필을 불러오지 못했습니다. Firebase 규칙을 확인하세요.";return@addSnapshotListener}
-            profiles=snapshot?.documents?.associate {it.id to MemberProfile(it.getString("bio").orEmpty(),it.getString("resolve").orEmpty(),it.getString("gender")?.let {value->runCatching {ProfileGender.valueOf(value)}.getOrNull()})}.orEmpty()
+            profiles=snapshot?.documents?.associate {it.id to MemberProfile(it.getString("bio").orEmpty(),it.getString("resolve").orEmpty(),it.getString("gender")?.let {value->runCatching {ProfileGender.valueOf(value)}.getOrNull()},it.getLong("emojiStyle")?.toInt()?.takeIf {index->index in MemberEmojiStyles.indices}?:0)}.orEmpty()
         }
         listeners += pair.collection("daySchedules").addSnapshotListener {snapshot,e ->
             if(e!=null) {error="날짜 분류를 불러오지 못했어요.";return@addSnapshotListener}
@@ -182,13 +183,13 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         dateSchedules=dateSchedules+(date to schedule)
         goals=goals.map {it.copy(dateSchedules=dateSchedules)}
     }
-    fun saveProfile(name:String,bio:String,resolve:String,gender:ProfileGender?=profiles[uid]?.gender)=work {
-        require(name.trim().length in 1..20&&bio.length<=200&&resolve.length<=200)
-        if(demo) {names=names+(uid to name.trim());profiles=profiles+(uid to MemberProfile(bio,resolve,gender));return@work}
+    fun saveProfile(name:String,bio:String,resolve:String,gender:ProfileGender?=profiles[uid]?.gender,emojiStyle:Int=profiles[uid]?.emojiStyle?:0)=work {
+        require(name.trim().length in 1..20&&bio.length<=200&&resolve.length<=200&&emojiStyle in MemberEmojiStyles.indices)
+        if(demo) {names=names+(uid to name.trim());profiles=profiles+(uid to MemberProfile(bio.trim(),resolve.trim(),gender,emojiStyle));return@work}
         val pair=db!!.collection("pairs").document(pairId)
         val batch=db.batch()
         batch.update(pair,com.google.firebase.firestore.FieldPath.of("names",uid),name.trim())
-        batch.set(pair.collection("profiles").document(uid),mapOf("bio" to bio.trim(),"resolve" to resolve.trim(),"gender" to gender?.name))
+        batch.set(pair.collection("profiles").document(uid),mapOf("bio" to bio.trim(),"resolve" to resolve.trim(),"gender" to gender?.name,"emojiStyle" to emojiStyle))
         batch.commit().await()
     }
     fun addGoal(title:String,position:Int?=null,schedule:GoalSchedule=if(KoreanHolidays.isRestDay(koreaToday())) GoalSchedule.WEEKEND else GoalSchedule.WEEKDAY,weeklyTarget:Int?=null,colorIndex:Int?=null,onSaved:()->Unit={})=work {

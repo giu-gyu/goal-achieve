@@ -124,7 +124,7 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
                 members.forEachIndexed {index,member ->
                     if(index>0) HorizontalDivider(color=palette.border)
                     val memberPalette=recordPalette(vm.profiles[member.key]?.gender)
-                    WeeklyRecords(vm,member.key,"${member.value} · ${if(member.key==vm.uid) "나" else "짝꿍"}",start,end,today,schedule)
+                    WeeklyRecords(vm,member.key,vm.memberLabel(member.key),start,end,today,schedule)
                     val memos=vm.memos.filter {
                         it.ownerId==member.key&&it.date>=start&&it.date<=end&&vm.scheduleFor(it.date)==schedule&&it.text.isNotBlank()
                     }.sortedBy {it.date}
@@ -248,7 +248,7 @@ internal fun StatsPage(vm:DailyViewModel,today:LocalDate,onLogout:()->Unit) {
             Surface(color=Color.White,shape=RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
                     Row(verticalAlignment=Alignment.CenterVertically) {
-                        Text("${member.value} · ${if(member.key==vm.uid) "나" else "짝꿍"}",fontSize=13.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
+                        Text(vm.memberLabel(member.key),fontSize=13.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
                         Text(emoji,fontSize=23.sp)
                         Spacer(Modifier.width(8.dp))
                         Text(if(total==0)"—" else "$percent%",fontSize=19.sp,fontWeight=FontWeight.Bold,color=Coral)
