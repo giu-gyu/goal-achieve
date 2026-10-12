@@ -71,3 +71,5 @@ fun daySuccessPercent(goals:List<Goal>,entries:List<Entry>,date:LocalDate,today:
 
 fun allGoalsRecorded(goals:List<Goal>,entries:List<Entry>,date:LocalDate):Boolean =
     goals.isNotEmpty()&&goals.all {goal->entries.any {it.goalId==goal.id&&it.date==date}}
+
+fun List<DailyMemo>.memoFor(ownerId:String,date:LocalDate):String = firstOrNull {it.ownerId==ownerId&&it.date==date}?.text.orEmpty()

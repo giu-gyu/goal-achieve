@@ -210,7 +210,8 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,on
                 if(value!=null&&!previouslyRecorded&&allGoalsRecorded(list,vm.entries,today)) onCelebrate()
             })
         })}
-    val saved=vm.memos.firstOrNull {it.ownerId==vm.uid&&it.date==today}?.text.orEmpty()
+    if(id==vm.uid) {
+    val saved=vm.memos.memoFor(vm.uid,today)
     var draft by rememberSaveable(vm.uid,today.toString(),stateSaver=Saver<MemoDraft,List<String>>(
         save={listOf(it.text,it.baseline)},restore={MemoDraft(it[0],it[1])}
     )) {mutableStateOf(MemoDraft(vm.memoDraft(today)?:saved,saved))}
@@ -225,8 +226,18 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,on
         vm.memoStatus?.takeUnless {it=="메모를 저장했어요."||it=="메모를 삭제했어요."}?.let { Text(it,fontSize=12.sp,color=Muted) }
     }
 
+    } else {
+        Column(verticalArrangement=Arrangement.spacedBy(6.dp)) {
+            Text("${vm.names[id].orEmpty().ifBlank {"짝꿍"}}의 오늘 메모",fontSize=14.sp,fontWeight=FontWeight.SemiBold)
+            Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp),color=Color.White,
+                border=androidx.compose.foundation.BorderStroke(1.dp,Line)) {
+                val partnerMemo=vm.memos.memoFor(id,today)
+                Text(partnerMemo.ifBlank {"아직 작성한 메모가 없습니다."},modifier=Modifier.padding(12.dp),
+                    fontSize=13.sp,lineHeight=20.sp,color=if(partnerMemo.isBlank())Muted else Ink)
+            }
+        }
+    }
 }
-
 @Composable
 private fun GoalEditor(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,onSchedule:(GoalSchedule)->Unit,onAdd:()->Unit,onDismiss:()->Unit) {
     var deleting by remember {mutableStateOf<Goal?>(null)}
