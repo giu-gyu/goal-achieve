@@ -164,9 +164,7 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
     val days=generateSequence(start){it.plusDays(1)}.takeWhile {it<=end}.filter {vm.scheduleFor(it)==schedule}.toList()
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)) {
         Text(name,fontSize=14.sp,fontWeight=FontWeight.Bold,color=palette.accent)
-        if(goals.isEmpty()) Text("이 기간에 등록된 목표가 없습니다.",color=Muted,fontSize=12.sp)
-        else if(days.isEmpty()) Text("이 기간에 해당 날짜가 없습니다.",color=Muted,fontSize=12.sp)
-        else BoxWithConstraints(Modifier.fillMaxWidth()) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
             val tableWidth=if(days.size>7)maxOf(maxWidth,(124+days.size*28).dp)else maxWidth
             Column(if(days.size>7)Modifier.horizontalScroll(rememberScrollState()) else Modifier) {
             Column(Modifier.width(tableWidth).clip(RoundedCornerShape(12.dp)).background(palette.cell).border(.5.dp,palette.border,RoundedCornerShape(12.dp))) {
