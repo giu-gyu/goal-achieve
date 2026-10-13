@@ -163,8 +163,12 @@ else RecordPalette(Ink,Color(0xFFF0F3F6),Color.White,Color(0xFFD5DDE5),Color.Whi
 private fun RecordMemoCard(vm:DailyViewModel,memo:DailyMemo,palette:RecordPalette) {
     var editing by remember {mutableStateOf(false)}
     var draft by rememberSaveable(memo.ownerId,memo.date.toString()) {mutableStateOf(memo.text)}
-    val editable=memo.ownerId==vm.uid&&memo.date<=koreaToday()
-    val editModifier=if(editable)Modifier.combinedClickable(enabled=!vm.busy,onClick={},onLongClick={draft=memo.text;editing=true}) else Modifier
+    val clipboard=LocalClipboardManager.current
+    val editable=memo.ownerId==vm.uid
+    val editModifier=Modifier.combinedClickable(
+        onClick={if(editable&&!vm.busy) {draft=memo.text;editing=true}},
+        onLongClickLabel="메모 복사",
+        onLongClick={clipboard.setText(AnnotatedString(memo.text))})
     Surface(modifier=Modifier.fillMaxWidth().then(editModifier),shape=RoundedCornerShape(10.dp),color=Color.White,
         border=androidx.compose.foundation.BorderStroke(1.dp,palette.border)) {
         Text("${memo.date.format(java.time.format.DateTimeFormatter.ofPattern("M/d (E)",java.util.Locale.KOREAN))}  ${memo.text}",

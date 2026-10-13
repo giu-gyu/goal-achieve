@@ -25,7 +25,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Dialog
@@ -217,32 +216,30 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,currentDate:LocalDate,sc
                 if(value!=null&&!previouslyRecorded&&allGoalsRecorded(list,vm.entries,today)) onCelebrate()
             })
         })}
+    key(vm.uid,id,today.toString()) {
     if(id==vm.uid) {
-    val saved=vm.memos.memoFor(vm.uid,today)
-    var draft by rememberSaveable(vm.uid,today.toString(),stateSaver=Saver<MemoDraft,List<String>>(
-        save={listOf(it.text,it.baseline)},restore={MemoDraft(it[0],it[1])}
-    )) {mutableStateOf(MemoDraft(vm.memoDraft(today)?:saved,saved))}
-    LaunchedEffect(saved) { draft=draft.remote(saved) }
-    Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
-        Text("오늘 메모",fontSize=14.sp,fontWeight=FontWeight.SemiBold)
-        OutlinedTextField(draft.text,{if(it.length<=2000) {draft=draft.copy(text=it);vm.editMemoDraft(today,it)}},placeholder={Text("오늘의 메모")},minLines=2,maxLines=5,modifier=Modifier.fillMaxWidth())
-        TextButton(onClick={
-            val submitted = draft.text
-            vm.saveMemo(today,submitted,onSaved={draft=draft.confirmed(submitted);onMemoSaved(if(submitted.isBlank())"메모를 삭제했어요" else "메모를 저장했어요")})
-        },enabled=!vm.busy&&draft.text.trim()!=saved,modifier=Modifier.align(Alignment.End)) {Text("메모 저장")}
-        vm.memoStatus?.takeUnless {it=="메모를 저장했어요."||it=="메모를 삭제했어요."}?.let { Text(it,fontSize=12.sp,color=Muted) }
-    }
-
+        var draft by rememberSaveable {mutableStateOf(vm.memoDraft(today).orEmpty())}
+        Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
+            Text(if(today==currentDate)"오늘 메모" else "선택한 날짜의 메모",fontSize=14.sp,fontWeight=FontWeight.SemiBold)
+            OutlinedTextField(draft,{if(it.length<=2000) {draft=it;vm.editMemoDraft(today,it)}},placeholder={Text("이 날의 메모")},minLines=2,maxLines=5,modifier=Modifier.fillMaxWidth())
+            TextButton(onClick={
+                val submitted=draft
+                vm.saveMemo(today,submitted,onSaved={
+                    if(draft==submitted) draft=""
+                    onMemoSaved("메모를 저장했어요")
+                })
+            },enabled=!vm.busy&&draft.isNotBlank(),modifier=Modifier.align(Alignment.End)) {Text("메모 저장")}
+            vm.memoStatus?.takeUnless {it=="메모를 저장했어요."||it=="메모를 삭제했어요."}?.let {Text(it,fontSize=12.sp,color=Muted)}
+        }
     } else {
         Column(verticalArrangement=Arrangement.spacedBy(6.dp)) {
-            Text("${vm.names[id].orEmpty().ifBlank {"짝꿍"}}의 오늘 메모",fontSize=14.sp,fontWeight=FontWeight.SemiBold)
+            Text("${vm.names[id].orEmpty().ifBlank {"짝꿍"}}의 ${if(today==currentDate)"오늘 메모" else "선택한 날짜의 메모"}",fontSize=14.sp,fontWeight=FontWeight.SemiBold)
             Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp),color=Color.White,
                 border=androidx.compose.foundation.BorderStroke(1.dp,Line)) {
-                val partnerMemo=vm.memos.memoFor(id,today)
-                Text(partnerMemo.ifBlank {"아직 작성한 메모가 없습니다."},modifier=Modifier.padding(12.dp),
-                    fontSize=13.sp,lineHeight=20.sp,color=if(partnerMemo.isBlank())Muted else Ink)
+                Text("저장된 메모는 기록 탭에서 확인하세요.",modifier=Modifier.padding(12.dp),fontSize=13.sp,lineHeight=20.sp,color=Muted)
             }
         }
+    }
     }
 }
 @Composable
