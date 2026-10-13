@@ -198,10 +198,13 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             Text(name,fontSize=13.sp,fontWeight=FontWeight.Bold,color=palette.accent,modifier=Modifier.weight(1f),maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
-                listOf("평일" to Color(0xFF966312),"주말" to Color(0xFFA54F64),"주당 횟수" to Color(0xFF217E78)).forEach {(label,color) ->
-                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(3.dp)) {
-                        Box(Modifier.size(6.dp).background(color,CircleShape))
-                        Text(label,color=color,fontSize=9.sp)
+                listOf(
+                    Triple("평일",Color(0xFF966312),Color(0xFFFBF3DF)),
+                    Triple("주말",Color(0xFFA54F64),Color(0xFFFBEFF1)),
+                    Triple("주당 횟수",Color(0xFF217E78),Color(0xFFEAF6F2))
+                ).forEach {(label,color,background) ->
+                    Surface(color=background,shape=RoundedCornerShape(6.dp),border=androidx.compose.foundation.BorderStroke(.5.dp,color.copy(alpha=.25f))) {
+                        Text(label,color=color,fontSize=9.sp,modifier=Modifier.padding(horizontal=6.dp,vertical=3.dp))
                     }
                 }
             }
