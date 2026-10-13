@@ -80,4 +80,17 @@ class ScheduleProgressTest {
         assertTrue(g.scheduled(start))
         assertTrue(g.scheduled(start.plusDays(5)))
         assertEquals(66,rate(g,listOf(Entry("g",start,true),Entry("g",start.plusDays(5),true))).percent)
+    }    @Test fun twoWeekdayHolidaysChangeTheWeekToThreeAndFourDays() {
+        val from=d("2026-10-05")
+        val to=from.plusDays(6)
+        val weekday=goal().copy(start=from)
+        val weekend=goal(schedule=GoalSchedule.WEEKEND).copy(start=from)
+        assertEquals(3,progress(weekday,emptyList(),from,to,to).total)
+        assertEquals(4,progress(weekend,emptyList(),from,to,to).total)
+    }
+    @Test fun noCategoryUsesAllSevenDays() {
+        val g=goal(schedule=GoalSchedule.ALL)
+        assertEquals(7,rate(g,emptyList()).total)
+        assertEquals(100,rate(g,(0L..6L).map {Entry("g",start.plusDays(it),true)}).percent)
+        assertEquals(85,rate(g,(0L..5L).map {Entry("g",start.plusDays(it),true)}).percent)
     }}

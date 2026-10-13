@@ -22,8 +22,8 @@ import androidx.compose.ui.zIndex
 
 
 @Composable
-internal fun GoalOrderDialog(vm:DailyViewModel,schedule:GoalSchedule,onDismiss:()->Unit) {
-    var ordered by remember {mutableStateOf(vm.goals.filter {it.ownerId==vm.uid&&it.schedule==schedule})}
+internal fun GoalOrderDialog(vm:DailyViewModel,onDismiss:()->Unit) {
+    var ordered by remember {mutableStateOf(vm.goals.filter {it.ownerId==vm.uid})}
     val listState=rememberLazyListState()
     var draggedId by remember {mutableStateOf<String?>(null)}
     var draggedTop by remember {mutableFloatStateOf(0f)}
@@ -77,7 +77,7 @@ internal fun GoalOrderDialog(vm:DailyViewModel,schedule:GoalSchedule,onDismiss:(
                 }
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
                     TextButton(onClick=onDismiss,enabled=!vm.busy) {Text("취소")}
-                    TextButton(onClick={vm.reorderGoals(schedule,ordered.map {it.id},onSaved=onDismiss)},enabled=!vm.busy&&draggedId==null) {Text("순서 저장")}
+                    TextButton(onClick={vm.reorderGoals(ordered.map {it.id},onSaved=onDismiss)},enabled=!vm.busy&&draggedId==null) {Text("순서 저장")}
                 }
             }
         }

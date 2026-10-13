@@ -195,17 +195,17 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         profiles=profiles+(uid to MemberProfile(bio.trim(),resolve.trim(),gender,emojiStyle))
         onSaved()
     }
-    fun addGoal(title:String,position:Int?=null,schedule:GoalSchedule=if(KoreanHolidays.isRestDay(koreaToday())) GoalSchedule.WEEKEND else GoalSchedule.WEEKDAY,weeklyTarget:Int?=null,onSaved:()->Unit={})=work {
+    fun addGoal(title:String,position:Int?=null,schedule:GoalSchedule=GoalSchedule.ALL,weeklyTarget:Int?=null,onSaved:()->Unit={})=work {
         require(title.trim().length in 1..60) {"목표는 1~60자로 입력해주세요."}
         require(weeklyTarget==null || weeklyTarget in 1..7) { "주당 횟수는 1~7회로 설정해주세요." }
-        val own=goals.filter {it.ownerId==uid&&it.schedule==schedule}.toMutableList()
+        val own=goals.filter {it.ownerId==uid}.toMutableList()
         require(goals.count {it.ownerId==uid}<450) {"목표는 최대 450개까지 등록할 수 있습니다."}
         val index=(position?:own.size).coerceIn(0,own.size)
         val ref=if(demo)null else db!!.collection("pairs").document(pairId).collection("goals").document()
         val new=Goal(ref?.id?:UUID.randomUUID().toString(),uid,title.trim(),koreaToday(),schedule=schedule,weeklyTarget=weeklyTarget,dateSchedules=dateSchedules)
         own.add(index,new)
         val ordered=own.mapIndexed {i,g->g.copy(order=i)}
-        if(demo) {goals=goals.filterNot {it.ownerId==uid&&it.schedule==schedule}+ordered;onSaved();return@work}
+        if(demo) {goals=goals.filterNot {it.ownerId==uid}+ordered;onSaved();return@work}
         val batch=db!!.batch()
         ordered.forEach {g ->
             if(g.id==new.id)batch.set(ref!!,mapOf("ownerId" to uid,"title" to g.title,"start" to g.start.toString(),"end" to null,"order" to g.order,"schedule" to g.schedule.name,"weeklyTarget" to g.weeklyTarget))
@@ -217,26 +217,26 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
     fun moveGoal(goal:Goal,direction:Int)=work {
         require(goal.ownerId==uid&&direction in listOf(-1,1))
         val schedule=goal.schedule
-        val own=goals.filter {it.ownerId==uid&&it.schedule==schedule}.toMutableList()
+        val own=goals.filter {it.ownerId==uid}.toMutableList()
         require(own.size<=450)
         val index=own.indexOfFirst {it.id==goal.id}
         val target=index+direction
         if(index<0||target !in own.indices)return@work
         own.removeAt(index);own.add(target,goal)
         val ordered=own.mapIndexed {i,g->g.copy(order=i)}
-        if(demo) {goals=goals.filterNot {it.ownerId==uid&&it.schedule==schedule}+ordered;return@work}
+        if(demo) {goals=goals.filterNot {it.ownerId==uid}+ordered;return@work}
         val refs=db!!.collection("pairs").document(pairId).collection("goals")
         val batch=db.batch()
         ordered.forEach {batch.update(refs.document(it.id),"order",it.order)}
         batch.commit().await()
     }
-    fun reorderGoals(schedule:GoalSchedule,ids:List<String>,onSaved:()->Unit) = work {
-        val own=goals.filter {it.ownerId==uid&&it.schedule==schedule}
+    fun reorderGoals(ids:List<String>,onSaved:()->Unit) = work {
+        val own=goals.filter {it.ownerId==uid}
         require(ids.size==own.size&&ids.toSet()==own.map {it.id}.toSet()) {"목표 목록이 변경됐어요. 다시 순서를 설정해주세요."}
         require(ids.size<=450)
         val byId=own.associateBy {it.id}
         val ordered=ids.mapIndexed {index,id->byId.getValue(id).copy(order=index)}
-        if(demo) {goals=goals.filterNot {it.ownerId==uid&&it.schedule==schedule}+ordered;onSaved();return@work}
+        if(demo) {goals=goals.filterNot {it.ownerId==uid}+ordered;onSaved();return@work}
         val refs=db!!.collection("pairs").document(pairId).collection("goals")
         val batch=db.batch()
         ordered.forEach {batch.update(refs.document(it.id),"order",it.order)}

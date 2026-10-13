@@ -6,14 +6,14 @@ import java.time.temporal.TemporalAdjusters
 
 
 enum class GoalSchedule(val label: String) {
-    WEEKDAY("평일"), WEEKEND("주말·공휴일");
-    fun includes(date: LocalDate) = (this == WEEKEND) == KoreanHolidays.isRestDay(date)
+    WEEKDAY("평일"), WEEKEND("주말·공휴일"), ALL("매일");
+    fun includes(date: LocalDate) = this == ALL || (this == WEEKEND) == KoreanHolidays.isRestDay(date)
 }
 
 data class Goal(val id: String, val ownerId: String, val title: String, val start: LocalDate, val end: LocalDate? = null, val order:Int=Int.MAX_VALUE, val schedule:GoalSchedule=GoalSchedule.WEEKDAY, val weeklyTarget:Int?=null, val dateSchedules:Map<LocalDate,GoalSchedule> = emptyMap()) {
     val frequencyLabel get() = weeklyTarget?.let { "주 ${it}회" } ?: ""
     val typeLabel get() = weeklyTarget?.let { "주 ${it}회" } ?: schedule.label
-    fun scheduled(date: LocalDate) = date >= start && (end == null || date <= end) && (weeklyTarget != null || schedule == scheduleForDate(date,dateSchedules))
+    fun scheduled(date: LocalDate) = date >= start && (end == null || date <= end) && (weeklyTarget != null || schedule == GoalSchedule.ALL || schedule == scheduleForDate(date,dateSchedules))
 }
 fun scheduleForDate(date:LocalDate,overrides:Map<LocalDate,GoalSchedule> = emptyMap()):GoalSchedule =
     overrides[date] ?: if(KoreanHolidays.isRestDay(date)) GoalSchedule.WEEKEND else GoalSchedule.WEEKDAY
