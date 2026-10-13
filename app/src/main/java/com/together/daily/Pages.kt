@@ -195,7 +195,17 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
     val days=generateSequence(start){it.plusDays(1)}.takeWhile {it<=end}.toList()
     val weekBoundaries=days.zipWithNext().filter {(previous,next)->weekStart(previous)!=weekStart(next)}.map {it.second}.toSet()
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-        Text(name,fontSize=14.sp,fontWeight=FontWeight.Bold,color=palette.accent)
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+            Text(name,fontSize=13.sp,fontWeight=FontWeight.Bold,color=palette.accent,modifier=Modifier.weight(1f),maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+                listOf("평일" to Color(0xFF966312),"주말" to Color(0xFFA54F64),"주당 횟수" to Color(0xFF217E78)).forEach {(label,color) ->
+                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(3.dp)) {
+                        Box(Modifier.size(6.dp).background(color,CircleShape))
+                        Text(label,color=color,fontSize=9.sp)
+                    }
+                }
+            }
+        }
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val tableWidth=if(days.size>7)maxOf(maxWidth,(124+days.size*28).dp)else maxWidth
             Column(if(days.size>7)Modifier.horizontalScroll(rememberScrollState()) else Modifier) {
@@ -217,7 +227,14 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
             }
             goals.forEach {goal ->
                 Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-                    Box(Modifier.weight(3f).fillMaxHeight().background(goal.typeBackground).border(.5.dp,palette.border).padding(4.dp),contentAlignment=Alignment.CenterStart) {Text(listOf(goal.title,goal.typeLabel).filter {it.isNotBlank()}.joinToString("\n"),fontSize=12.sp,lineHeight=15.sp,color=goal.typeAccent)}
+                    Row(Modifier.weight(3f).fillMaxHeight().background(goal.typeBackground).border(.5.dp,palette.border).padding(4.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(3.dp)) {
+                        Text(goal.title,fontSize=12.sp,lineHeight=15.sp,color=Ink,modifier=Modifier.weight(1f))
+                        (goal.weeklyTarget?:if(goal.schedule==GoalSchedule.ALL)7 else null)?.let {count ->
+                            Surface(color=Color.White.copy(alpha=.8f),shape=RoundedCornerShape(5.dp),border=androidx.compose.foundation.BorderStroke(.5.dp,goal.typeAccent.copy(alpha=.3f))) {
+                                Text("주 ${count}회",fontSize=8.sp,color=goal.typeAccent,modifier=Modifier.padding(horizontal=3.dp,vertical=2.dp),maxLines=1)
+                            }
+                        }
+                    }
                     days.forEach {day ->
                         val done=records[goal.id to day]?.done
                         val applicable=goal.scheduled(day)&&day<=today
