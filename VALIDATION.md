@@ -129,3 +129,11 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 
 - Galaxy SM-S928N에 adb install -r 성공, 기존 데이터 유지 방식으로 업데이트 및 앱 실행.
 - /sdcard/together-daily.apk 및 /sdcard/Download/together-daily.apk 복사 완료. 두 파일의 SHA-256이 로컬 최신 APK와 일치.
+
+## 프로필·설정·메모 반응·기록 UI 검증 (2026-10-14)
+
+- 프로필 고정 저장 버튼, 압축 날짜 헤더, 목표별 분류/매일/주당 1~7회 설정, 전체 목표 정렬 적용.
+- 메모 복사/회원별 반응 및 취소, 본문 수정 시 반응 유지, 길게 누르기 복사 효과 적용.
+- 앰버/로즈/틸 색상과 기록 표 우측 범례, 동일 행 주당 횟수 배지 적용.
+- assembleDebug + testDebugUnitTest + lintDebug 성공. 단위 테스트 35/35 통과 (평일 공휴일 2일 주간 3/4일 분모, 매일 7일, 반응 독립/취소 및 본문 변경 유지 포함).
+- APK 두 파일 갱신. ADB 연결 기기 없음. 실제 휴대폰 화면·프로필 저장·반응 공유 검증과 휴대폰 업데이트는 미수행.
