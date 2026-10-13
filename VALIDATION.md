@@ -143,3 +143,10 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - 중앙 빨간 오늘 버튼, 목표 분류 3개 버튼 및 0~7 확장 선택(0=해제), 기록 배경색 범례 배지 적용.
 - assembleDebug/testDebugUnitTest/lintDebug 성공. 테스트 35/35 통과.
 - APK 두 파일 갱신. SM-S928N 내장 저장공간·Download에 복사, SHA-256 일치 확인. install -r 성공 및 앱 실행.
+
+
+## 달성률 진행 날짜 기준 (2026-10-14)
+
+- 달성률 탭의 미래 날짜 제외, 회원별 오늘 미기록 시 어제까지 계산, 오늘 첫 완료/미완료 기록부터 오늘 포함.
+- 화요일 완료 100%, 미기록 수요일 100% 유지, 오늘 시작 후 전체 목표 반영, 상대방/미래 기록 제외, 주당 횟수 유지 검증.
+- assembleDebug/testDebugUnitTest/lintDebug 성공. 단위 테스트 39/39 통과. APK 두 파일 갱신. ADB 연결 기기 없음으로 휴대폰 설치 미수행.
