@@ -53,6 +53,10 @@ fun progress(goal: Goal, entries: List<Entry>, start: LocalDate, end: LocalDate,
     }
     return Progress(done, missed, blank)
 }
+fun achievementCutoff(goals:List<Goal>,entries:List<Entry>,today:LocalDate):LocalDate {
+    val todaysGoals=goals.filter {it.scheduled(today)}.map {it.id}.toSet()
+    return if(entries.any {it.date==today&&it.goalId in todaysGoals})today else today.minusDays(1)
+}
 fun weekStart(date: LocalDate): LocalDate = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 
 val MemoReactionEmojis=listOf("❤️","👍","👏","🥰","🔥","😂")

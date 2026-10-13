@@ -282,8 +282,10 @@ internal fun StatsPage(vm:DailyViewModel,today:LocalDate,onLogout:()->Unit) {
             IconButton(onClick={offset++},enabled=offset<0,modifier=Modifier.size(36.dp)) {Mark(Symbol.Next,color=if(offset<0)Ink else Line,description="다음 기간")}
         }
         vm.names.entries.sortedBy {if(it.key==vm.uid)0 else 1}.forEach {member ->
-            val ranked=vm.goals.filter {it.ownerId==member.key&&it.start<=minOf(end,today)&&(it.end==null||it.end>=start)}
-                .map {it to progress(it,vm.entries,start,end,today)}
+            val ownGoals=vm.goals.filter {it.ownerId==member.key}
+            val through=achievementCutoff(ownGoals,vm.entries,today)
+            val ranked=ownGoals.filter {it.start<=minOf(end,through)&&(it.end==null||it.end>=start)}
+                .map {it to progress(it,vm.entries,start,minOf(end,through),through)}
                 .sortedWith(compareByDescending<Pair<Goal,Progress>> {(_,p)->if(p.total==0)-1.0 else p.done.toDouble()/p.total}.thenByDescending {it.second.done}.thenBy {it.first.title})
             val values=ranked.map {it.second}
             val done=values.sumOf {it.done}
