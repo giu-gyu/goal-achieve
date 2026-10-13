@@ -195,8 +195,8 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,currentDate:LocalDate,on
     val done=list.count {g->vm.entries.any {it.goalId==g.id&&it.date==today&&it.done}}
     Surface(color=Peach.copy(alpha=.65f),shape=RoundedCornerShape(18.dp),modifier=Modifier.fillMaxWidth()) {
         Column(Modifier.padding(horizontal=10.dp,vertical=4.dp),verticalArrangement=Arrangement.spacedBy(0.dp)) {
-            TextButton(onClick={onDateChange(currentDate)},enabled=!vm.busy&&today!=currentDate,
-                modifier=Modifier.align(Alignment.End).height(24.dp),contentPadding=PaddingValues(0.dp)) {Text("오늘",fontSize=11.sp)}
+            TextButton(onClick={onDateChange(currentDate)},enabled=!vm.busy,
+                modifier=Modifier.align(Alignment.CenterHorizontally).height(24.dp),contentPadding=PaddingValues(0.dp)) {Text("오늘",fontSize=11.sp,color=Coral)}
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                 IconButton(onClick={onDateChange(today.minusDays(1))},enabled=!vm.busy,modifier=Modifier.size(32.dp)) {Mark(Symbol.Back,description="이전 날짜")}
                 Text(today.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일 E요일",Locale.KOREAN)),color=Ink,fontSize=17.sp,fontWeight=FontWeight.Bold,
@@ -345,45 +345,37 @@ private fun RecordButton(text:String,selected:Boolean,color:Color,bg:Color,symbo
 }
 
 @Composable
-private fun GoalSettings(schedule:GoalSchedule,target:Int?,enabled:Boolean,onSchedule:(GoalSchedule)->Unit,onTarget:(Int?)->Unit,showSchedule:Boolean=true) {
+private fun GoalSettings(schedule:GoalSchedule,target:Int?,enabled:Boolean,onSchedule:(GoalSchedule)->Unit,onTarget:(Int?)->Unit) {
     var expanded by remember {mutableStateOf(false)}
     Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
-        if(showSchedule) Row(verticalAlignment=Alignment.CenterVertically) {
-            Text("목표 분류",fontSize=12.sp,modifier=Modifier.weight(1f))
-            GoalSchedulePicker(if(target==null)schedule else GoalSchedule.ALL,enabled,onSchedule)
-        }
-        TextButton(onClick={expanded=!expanded},enabled=enabled,modifier=Modifier.fillMaxWidth().height(32.dp),
-            contentPadding=PaddingValues(horizontal=4.dp,vertical=0.dp)) {
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween) {
-                Text("주당 횟수 설정",fontSize=11.sp,color=Muted)
-                Text("${target?.let {"주 ${it}회"}?:"OFF"} ${if(expanded)"▴" else "▾"}",fontSize=11.sp,color=if(target==null)Muted else Coral)
-            }
-        }
-        if(target!=null) Text("평일·주말 구분 없이 한 주에 ${target}회 완료하면 100%",fontSize=11.sp,color=Muted)
-        if(expanded) {
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(3.dp)) {
-                listOf<Int?>(1,2,3,4,5,6,7,null).forEach {value ->
-                    val selected=target==value
-                    Box(Modifier.weight(1f).height(32.dp).clip(RoundedCornerShape(8.dp))
-                        .background(if(selected)Coral else Color.White.copy(alpha=.7f))
-                        .selectable(selected=selected,enabled=enabled,role=androidx.compose.ui.semantics.Role.RadioButton,onClick={onTarget(value);if(value==null)expanded=false})
-                        .semantics {contentDescription=if(value==null)"주당 횟수 비활성화" else "주당 ${value}회"},contentAlignment=Alignment.Center) {
-                        Text(value?.toString()?:"X",fontSize=12.sp,color=if(selected)Color.White else Muted,fontWeight=FontWeight.SemiBold)
-                    }
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
+            listOf(GoalSchedule.WEEKDAY,GoalSchedule.WEEKEND).forEach {value ->
+                val selected=target==null&&!expanded&&schedule==value
+                val sample=Goal("","","",koreaToday(),schedule=value)
+                TextButton(onClick={expanded=false;onSchedule(if(selected)GoalSchedule.ALL else value)},enabled=enabled,
+                    colors=ButtonDefaults.textButtonColors(containerColor=if(selected)sample.typeBackground else Color.White,contentColor=sample.typeAccent),
+                    modifier=Modifier.weight(1f).height(34.dp),contentPadding=PaddingValues(horizontal=2.dp,vertical=0.dp)) {
+                    Text(value.label,fontSize=10.sp,maxLines=1)
                 }
             }
+            TextButton(onClick={expanded=!expanded},enabled=enabled,
+                colors=ButtonDefaults.textButtonColors(containerColor=if(target!=null||expanded)Color(0xFFEAF6F2) else Color.White,contentColor=Color(0xFF217E78)),
+                modifier=Modifier.weight(1f).height(34.dp),contentPadding=PaddingValues(horizontal=2.dp,vertical=0.dp)) {
+                Text("주당 횟수 설정 ${if(expanded)"▴" else "▾"}",fontSize=10.sp,maxLines=1)
+            }
         }
-    }
-}
-@Composable
-private fun GoalSchedulePicker(schedule:GoalSchedule,enabled:Boolean,onSelect:(GoalSchedule)->Unit) {
-    Row(horizontalArrangement=Arrangement.spacedBy(4.dp)) {
-        listOf(GoalSchedule.WEEKDAY,GoalSchedule.WEEKEND).forEach {value ->
-            val selected=schedule==value
-            TextButton(onClick={onSelect(if(selected)GoalSchedule.ALL else value)},enabled=enabled,
-                colors=ButtonDefaults.textButtonColors(containerColor=if(selected)Peach else Color.Transparent),
-                contentPadding=PaddingValues(horizontal=8.dp,vertical=0.dp),modifier=Modifier.height(32.dp)) {
-                Text(value.label,fontSize=11.sp)
+        if(expanded) Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(3.dp)) {
+            (0..7).forEach {value ->
+                val selected=if(value==0)target==null else target==value
+                Box(Modifier.weight(1f).height(32.dp).clip(RoundedCornerShape(8.dp))
+                    .background(if(selected)Color(0xFF217E78) else Color.White)
+                    .selectable(selected=selected,enabled=enabled,role=androidx.compose.ui.semantics.Role.RadioButton,onClick={
+                        onSchedule(GoalSchedule.ALL)
+                        onTarget(value.takeIf {it>0})
+                    })
+                    .semantics {contentDescription=if(value==0)"주당 횟수 해제" else "주당 ${value}회"},contentAlignment=Alignment.Center) {
+                    Text(value.toString(),fontSize=12.sp,color=if(selected)Color.White else Muted,fontWeight=FontWeight.SemiBold)
+                }
             }
         }
     }
