@@ -85,7 +85,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
     }) { padding ->
         Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(scroll).padding(horizontal=if(tab==1&&vm.pairId.isNotEmpty())0.dp else if(tab==2&&vm.pairId.isNotEmpty())12.dp else 22.dp),
-            verticalArrangement=Arrangement.spacedBy(if(tab!=0&&vm.pairId.isNotEmpty())8.dp else 22.dp)) {
+            verticalArrangement=Arrangement.spacedBy(if(tab!=0&&vm.pairId.isNotEmpty())8.dp else 8.dp)) {
             Spacer(Modifier.height(1.dp))
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                 Box(Modifier.size(34.dp).background(Peach,RoundedCornerShape(12.dp)),contentAlignment=Alignment.Center) {
@@ -193,20 +193,23 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,currentDate:LocalDate,sc
     val id=if(owner==0) vm.uid else vm.names.keys.firstOrNull {it!=vm.uid}.orEmpty()
     val list=vm.goals.filter {it.ownerId==id&&it.scheduled(today)}
     val done=list.count {g->vm.entries.any {it.goalId==g.id&&it.date==today&&it.done}}
-    SoftCard(color=Peach.copy(alpha=.65f)) {
-        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween) {
-            TextButton(onClick={onDateChange(today.minusDays(1))},enabled=!vm.busy) {Text("‹ 이전 날")}
-            TextButton(onClick={onDateChange(currentDate)},enabled=!vm.busy&&today!=currentDate) {Text("오늘로")}
-            TextButton(onClick={onDateChange(today.plusDays(1))},enabled=!vm.busy) {Text("다음 날 ›")}
+    Surface(color=Peach.copy(alpha=.65f),shape=RoundedCornerShape(18.dp),modifier=Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(horizontal=10.dp,vertical=4.dp),verticalArrangement=Arrangement.spacedBy(0.dp)) {
+            TextButton(onClick={onDateChange(currentDate)},enabled=!vm.busy&&today!=currentDate,
+                modifier=Modifier.align(Alignment.End).height(24.dp),contentPadding=PaddingValues(0.dp)) {Text("오늘",fontSize=11.sp)}
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                IconButton(onClick={onDateChange(today.minusDays(1))},enabled=!vm.busy,modifier=Modifier.size(32.dp)) {Mark(Symbol.Back,description="이전 날짜")}
+                Text(today.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일 E요일",Locale.KOREAN)),color=Ink,fontSize=17.sp,fontWeight=FontWeight.Bold,
+                    textAlign=androidx.compose.ui.text.style.TextAlign.Center,modifier=Modifier.weight(1f))
+                IconButton(onClick={onDateChange(today.plusDays(1))},enabled=!vm.busy,modifier=Modifier.size(32.dp)) {Mark(Symbol.Next,description="다음 날짜")}
+            }
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                Text("${list.size}개 중 ${done}개 완수",color=Coral,fontSize=14.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
+                TextButton(onClick=onEdit,enabled=!vm.busy,modifier=Modifier.height(30.dp),contentPadding=PaddingValues(horizontal=4.dp)) {Text("목표 수정",fontSize=12.sp)}
+            }
+            LinearProgressIndicator(progress={if(list.isEmpty())0f else done.toFloat()/list.size},modifier=Modifier.fillMaxWidth().height(4.dp).clip(CircleShape),color=Coral,trackColor=Color.White.copy(alpha=.8f),drawStopIndicator={})
         }
-        Text(today.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일 E요일",Locale.KOREAN)),color=Ink,fontSize=19.sp,fontWeight=FontWeight.Bold)
-        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-            Text("${list.size}개 중 ${done}개 완수",color=Coral,fontSize=16.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
-            TextButton(onClick=onEdit,enabled=!vm.busy) {Text("목표 수정")}
-        }
-        LinearProgressIndicator(progress={if(list.isEmpty())0f else done.toFloat()/list.size},modifier=Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),color=Coral,trackColor=Color.White.copy(alpha=.8f),drawStopIndicator={})
     }
-
     OwnerSwitch(vm,owner){owner=it}
     if(list.isEmpty()) Text("선택한 날짜에 등록된 목표가 없습니다.",color=Muted,fontSize=14.sp)
     list.forEach {goal -> GoalTile(goal,vm.entries.find {it.goalId==goal.id&&it.date==today}?.done,
