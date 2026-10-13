@@ -174,12 +174,12 @@ internal fun goalSymbol(title: String): Symbol = when {
 }
 
 internal val Goal.typeAccent:Color get()=when {
-    weeklyTarget!=null -> Color(0xFF7960A8)
-    schedule==GoalSchedule.WEEKEND -> Color(0xFF217E78)
-    else -> Color(0xFF426BB2)
+    weeklyTarget!=null || schedule==GoalSchedule.ALL -> Color(0xFF217E78)
+    schedule==GoalSchedule.WEEKEND -> Color(0xFFA54F64)
+    else -> Color(0xFF966312)
 }
 internal val Goal.typeBackground:Color get()=when {
-    weeklyTarget!=null -> Color(0xFFF2EDF9)
-    schedule==GoalSchedule.WEEKEND -> Color(0xFFEAF6F2)
-    else -> Color(0xFFEDF3FC)
+    weeklyTarget!=null || schedule==GoalSchedule.ALL -> Color(0xFFEAF6F2)
+    schedule==GoalSchedule.WEEKEND -> Color(0xFFFBEFF1)
+    else -> Color(0xFFFBF3DF)
 }
