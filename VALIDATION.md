@@ -98,3 +98,34 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - f75af2a: 기록의 내 메모 길게 누르기 편집, 원래 날짜 서버 저장 후 닫기, 빈 내용 삭제, 실패 시 유지. 짝꿍 메모는 읽기 전용.
 - ec2a1ed: 기본 얼굴/곱슬머리/금발 제거, 감정 28종 및 동작 4종 총 32종. 기존 동작 인덱스 보존. 선택은 기록·달성률 memberLabel에 반영. 기존 저장 동작과 잘못된 인덱스 대체 테스트 추가.
 - assembleDebug/testDebugUnitTest/lintDebug 성공. 단위 테스트 28/28 통과. 실제 Firebase 데이터 수정·규칙 배포·휴대폰 설치·화면 검증은 미수행.
+## 오늘 탭 날짜 이동 (2026-10-13)
+
+- 이전 날·다음 날·오늘로 버튼 및 선택한 날짜의 기록/메모/날짜 분류 수정 적용.
+- assembleDebug + testDebugUnitTest + lintDebug 성공. 단위 테스트 28/28 통과.
+- artifacts/together-daily.apk 및 쏘규-Daily-챌린지.apk 갱신.
+- Firestore 규칙 변경 없음. 실제 서버 저장 및 휴대폰 설치·화면 검증은 미수행.
+
+## 메모 입력 초기화 및 기록 복사 (2026-10-13)
+
+- 오늘 메모 칸 유지, 저장 성공 후 입력 초기화. 작성자·날짜별 Compose 상태 분리, 저장된 본문 재입력 제거. 상대방 칸은 기록 조회 안내 표시.
+- 기록 메모 길게 누르기: 본문 복사. 내 메모 짧게 누르기: 편집.
+- assembleDebug/testDebugUnitTest/lintDebug 성공, APK 두 파일 갱신. 휴대폰 화면 및 실제 서버 저장 검증 미수행.
+
+
+## 기록·달성률 통합 (2026-10-13)
+
+- 기록/달성률의 분류별 구분 제거, 사람별 전체 목표/날짜 및 메모 통합. 목표 설정과 계산 로직 유지.
+- assembleDebug/testDebugUnitTest/lintDebug 성공, APK 두 파일 갱신. 실제 휴대폰 화면 확인 미수행.
+
+
+## 목표 유형별 달성률·색상 (2026-10-13)
+
+- 주당 횟수 목표 요일 제한 해제, 전체 대상일 분모 및 소수점 버림. 평일/주말/주당 유형 색상 적용.
+- 80%/50%/66% 예시, 미래 기록 제외, 주 경계별 상한 및 날짜 분류 무시 검증. 단위 테스트 31/31 통과.
+- assembleDebug/testDebugUnitTest/lintDebug 성공. APK 두 파일 갱신. 실제 휴대폰 화면·서버 저장 검증은 미수행.
+
+
+## 휴대폰 업데이트 (2026-10-14)
+
+- Galaxy SM-S928N에 adb install -r 성공, 기존 데이터 유지 방식으로 업데이트 및 앱 실행.
+- /sdcard/together-daily.apk 및 /sdcard/Download/together-daily.apk 복사 완료. 두 파일의 SHA-256이 로컬 최신 APK와 일치.
