@@ -46,14 +46,15 @@ class ScheduleProgressTest {
         assertEquals(4,p.total)
         assertEquals(50,p.percent)
     }
-    @Test fun unstartedWeekendAndFutureDaysAreExcluded() {
+    @Test fun weeklyTargetAppliesBeforeTheWeekendAndFutureRecordsAreExcluded() {
         val g=goal(2,GoalSchedule.WEEKEND)
-        assertEquals(0,progress(g,emptyList(),start,start.plusDays(6),start.plusDays(3)).total)
+        assertEquals(2,progress(g,emptyList(),start,start.plusDays(6),start.plusDays(3)).total)
+        assertEquals(0,progress(g,listOf(Entry("g",start.plusDays(5),true)),start,start.plusDays(6),start.plusDays(3)).done)
         assertEquals(2,progress(g,emptyList(),start,start.plusDays(6),start.plusDays(5)).total)
     }
-    @Test fun wrongCategoryRecordsDoNotIncreaseFrequencyRate() {
+    @Test fun weekendRecordsIncreaseWeeklyTargetRegardlessOfCategory() {
         val records=listOf(Entry("g",start.plusDays(5),true),Entry("other",start,true))
-        assertEquals(0,rate(goal(2),records).percent)
+        assertEquals(50,rate(goal(2),records).percent)
     }
     @Test fun archivedAndPartWeeksKeepChosenTarget() {
         val g=goal(3).copy(start=start.plusDays(2),end=start.plusDays(3))
@@ -61,4 +62,22 @@ class ScheduleProgressTest {
         assertEquals(3,p.total)
         assertEquals(33,p.percent)
     }
-}
+    @Test fun requestedExamplesUseFullWeekAndTruncatePercent() {
+        val weekdays=(0L..3L).map {Entry("g",start.plusDays(it),true)}
+        assertEquals(80,rate(goal(),weekdays).percent)
+        assertEquals(50,rate(goal(schedule=GoalSchedule.WEEKEND),listOf(Entry("g",start.plusDays(5),true))).percent)
+        val mixed=listOf(Entry("g",start,true),Entry("g",start.plusDays(5),true))
+        GoalSchedule.entries.forEach {schedule ->
+            assertEquals(66,rate(goal(3,schedule),mixed).percent)
+            assertEquals(100,rate(goal(3,schedule),mixed+Entry("g",start.plusDays(6),true)).percent)
+        }
+    }
+    @Test fun weekdayRateDoesNotReachFullAfterJustMonday() {
+        assertEquals(20,progress(goal(),listOf(Entry("g",start,true)),start,start.plusDays(6),start).percent)
+    }
+    @Test fun weeklyTargetIgnoresDayOverrides() {
+        val g=goal(3).copy(dateSchedules=mapOf(start to GoalSchedule.WEEKEND))
+        assertTrue(g.scheduled(start))
+        assertTrue(g.scheduled(start.plusDays(5)))
+        assertEquals(66,rate(g,listOf(Entry("g",start,true),Entry("g",start.plusDays(5),true))).percent)
+    }}

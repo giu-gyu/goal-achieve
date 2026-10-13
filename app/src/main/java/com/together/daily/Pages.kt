@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.LocalDate
 import java.time.YearMonth
-import kotlin.math.roundToInt
+
 
 @Composable
 internal fun WelcomeArt(title:String,subtitle:String) {
@@ -196,7 +196,7 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
             }
             goals.forEach {goal ->
                 Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-                    Box(Modifier.weight(3f).fillMaxHeight().background(palette.cell).border(.5.dp,palette.border).padding(4.dp),contentAlignment=Alignment.CenterStart) {Text(listOf(goal.title,goal.frequencyLabel).filter {it.isNotBlank()}.joinToString("\n"),fontSize=12.sp,lineHeight=15.sp)}
+                    Box(Modifier.weight(3f).fillMaxHeight().background(goal.typeBackground).border(.5.dp,palette.border).padding(4.dp),contentAlignment=Alignment.CenterStart) {Text(listOf(goal.title,goal.typeLabel).filter {it.isNotBlank()}.joinToString("\n"),fontSize=12.sp,lineHeight=15.sp,color=goal.typeAccent)}
                     days.forEach {day ->
                         val done=records[goal.id to day]?.done
                         val applicable=goal.scheduled(day)&&day<=today
@@ -249,7 +249,7 @@ internal fun StatsPage(vm:DailyViewModel,today:LocalDate,onLogout:()->Unit) {
             val missed=values.sumOf {it.missed}
             val blank=values.sumOf {it.unrecorded}
             val total=done+missed+blank
-            val percent=if(total==0)0 else (done*100.0/total).roundToInt()
+            val percent=if(total==0)0 else (done*100.0/total).toInt()
             val emoji=when {total==0->"🌱";percent==100->"🏆";percent>=80->"😎";percent>=50->"😊";percent>0->"💪";else->"🌱"}
             Surface(color=Color.White,shape=RoundedCornerShape(14.dp),modifier=Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -263,10 +263,10 @@ internal fun StatsPage(vm:DailyViewModel,today:LocalDate,onLogout:()->Unit) {
                     Text(if(total==0)"이 기간에 기록할 목표가 없습니다." else "완료 $done · 미완료 $missed · 미기록 $blank",fontSize=11.sp,color=Muted)
                     ranked.forEachIndexed {index,(goal,p) ->
                         HorizontalDivider(color=Line)
-                        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                            Text(listOf("${index+1}. ${goal.title}",goal.frequencyLabel).filter {it.isNotBlank()}.joinToString(" · "),color=Ink,fontSize=12.sp,lineHeight=16.sp,modifier=Modifier.weight(1f))
+                        Row(Modifier.fillMaxWidth().background(goal.typeBackground,RoundedCornerShape(10.dp)).padding(8.dp),verticalAlignment=Alignment.CenterVertically) {
+                            Text(listOf("${index+1}. ${goal.title}",goal.typeLabel).filter {it.isNotBlank()}.joinToString(" · "),color=goal.typeAccent,fontSize=12.sp,lineHeight=16.sp,modifier=Modifier.weight(1f))
                             Spacer(Modifier.width(8.dp))
-                            Text(if(p.total==0)"—" else "${p.percent}%",fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=Coral)
+                            Text(if(p.total==0)"—" else "${p.percent}%",fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=goal.typeAccent)
                         }
                     }
                 }

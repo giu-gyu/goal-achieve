@@ -172,3 +172,14 @@ internal fun goalSymbol(title: String): Symbol = when {
     title.contains("운동") || title.contains("걷") || title.contains("산책") -> Symbol.Leaf
     else -> Symbol.Heart
 }
+
+internal val Goal.typeAccent:Color get()=when {
+    weeklyTarget!=null -> Color(0xFF7960A8)
+    schedule==GoalSchedule.WEEKEND -> Color(0xFF217E78)
+    else -> Color(0xFF426BB2)
+}
+internal val Goal.typeBackground:Color get()=when {
+    weeklyTarget!=null -> Color(0xFFF2EDF9)
+    schedule==GoalSchedule.WEEKEND -> Color(0xFFEAF6F2)
+    else -> Color(0xFFEDF3FC)
+}

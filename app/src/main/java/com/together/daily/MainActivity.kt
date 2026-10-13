@@ -191,7 +191,7 @@ private fun BottomMenu(selected: Int,onSelect:(Int)->Unit) {
 private fun TodayPage(vm:DailyViewModel,today:LocalDate,currentDate:LocalDate,schedule:GoalSchedule,onDateChange:(LocalDate)->Unit,onEdit:()->Unit,onCelebrate:()->Unit,onMemoSaved:(String)->Unit) {
     var owner by rememberSaveable { mutableIntStateOf(0) }
     val id=if(owner==0) vm.uid else vm.names.keys.firstOrNull {it!=vm.uid}.orEmpty()
-    val list=vm.goals.filter {it.ownerId==id&&it.schedule==schedule&&it.start<=today&&(it.end==null||it.end>=today)}
+    val list=vm.goals.filter {it.ownerId==id&&it.scheduled(today)}
     val done=list.count {g->vm.entries.any {it.goalId==g.id&&it.date==today&&it.done}}
     SoftCard(color=Peach.copy(alpha=.65f)) {
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween) {
@@ -314,14 +314,14 @@ internal fun EmptyGoals(title:String,subtitle:String,onAdd:(()->Unit)?=null) {
 @Composable
 internal fun GoalTile(goal:Goal,done:Boolean?,editable:Boolean,onRecord:(Boolean?)->Unit,onEnd:(()->Unit)?=null) {
     var menu by remember {mutableStateOf(false)}
-    SoftCard {
+    SoftCard(color=goal.typeBackground) {
         Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(42.dp).background(if(done==true)Mint else Lavender,RoundedCornerShape(14.dp)),contentAlignment=Alignment.Center) {
-                Mark(if(done==true)Symbol.Check else goalSymbol(goal.title),color=if(done==true)Sage else Lilac)
+            Box(Modifier.size(42.dp).background(goal.typeBackground,RoundedCornerShape(14.dp)),contentAlignment=Alignment.Center) {
+                Mark(if(done==true)Symbol.Check else goalSymbol(goal.title),color=goal.typeAccent)
             }
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(5.dp)) {
                 Text(goal.title,fontSize=15.sp,fontWeight=FontWeight.SemiBold,lineHeight=22.sp)
-                Text(listOf(goal.schedule.label,goal.frequencyLabel).filter {it.isNotBlank()}.joinToString(" · "),fontSize=11.sp,color=Muted)
+                Text(goal.typeLabel,fontSize=11.sp,color=goal.typeAccent,fontWeight=FontWeight.SemiBold)
             }
             if(editable&&(done!=null||onEnd!=null)) Box {
                 IconButton(onClick={menu=true},modifier=Modifier.size(32.dp)) {Mark(Symbol.More,color=Muted,description="목표 메뉴")}
@@ -365,6 +365,7 @@ private fun GoalSettings(schedule:GoalSchedule,target:Int?,enabled:Boolean,onSch
                 Text("${target?.let {"주 ${it}회"}?:"OFF"} ${if(expanded)"▴" else "▾"}",fontSize=11.sp,color=if(target==null)Muted else Coral)
             }
         }
+        if(target!=null) Text("평일·주말 구분 없이 한 주에 ${target}회 완료하면 100%",fontSize=11.sp,color=Muted)
         if(expanded) {
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(3.dp)) {
                 listOf<Int?>(1,2,3,4,null).forEach {value ->
