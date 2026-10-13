@@ -55,7 +55,13 @@ fun progress(goal: Goal, entries: List<Entry>, start: LocalDate, end: LocalDate,
 }
 fun weekStart(date: LocalDate): LocalDate = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 
-data class DailyMemo(val ownerId:String,val date:LocalDate,val text:String)
+val MemoReactionEmojis=listOf("❤️","👍","👏","🥰","🔥","😂")
+data class DailyMemo(val ownerId:String,val date:LocalDate,val text:String,val reactions:Map<String,String> = emptyMap()) {
+    fun reactedBy(memberId:String,emoji:String):DailyMemo {
+        require(memberId.isNotBlank()&&emoji in MemoReactionEmojis)
+        return copy(reactions=if(reactions[memberId]==emoji)reactions-memberId else reactions+(memberId to emoji))
+    }
+}
 enum class ProfileGender { MALE, FEMALE }
 data class MemberProfile(val bio:String="",val resolve:String="",val gender:ProfileGender?=null,val emojiStyle:Int=0)
 

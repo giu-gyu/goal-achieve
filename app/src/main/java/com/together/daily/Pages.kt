@@ -120,7 +120,7 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
                 }.sortedBy {it.date}
                 if(memos.isNotEmpty()) {
                     Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
-                        memos.forEach {memo->RecordMemoCard(vm,memo,palette)}
+                        memos.forEach {memo->key(memo.ownerId,memo.date) {RecordMemoCard(vm,memo,palette)}}
                     }
                 }
             }
@@ -146,25 +146,46 @@ null -> RecordPalette(Ink,Color(0xFFF4F5F6),Color(0xFFE9ECF0),Color(0xFFD3D9E0),
 private fun RecordMemoCard(vm:DailyViewModel,memo:DailyMemo,palette:RecordPalette) {
     var editing by remember {mutableStateOf(false)}
     var draft by rememberSaveable(memo.ownerId,memo.date.toString()) {mutableStateOf(memo.text)}
+    var copied by remember {mutableStateOf(false)}
     val clipboard=LocalClipboardManager.current
+    val haptics=androidx.compose.ui.platform.LocalHapticFeedback.current
     val editable=memo.ownerId==vm.uid
-    val editModifier=Modifier.combinedClickable(
-        onClick={if(editable&&!vm.busy) {draft=memo.text;editing=true}},
-        onLongClickLabel="메모 복사",
-        onLongClick={clipboard.setText(AnnotatedString(memo.text))})
-    Surface(modifier=Modifier.fillMaxWidth().then(editModifier),shape=RoundedCornerShape(10.dp),color=Color.White,
-        border=androidx.compose.foundation.BorderStroke(1.dp,palette.border)) {
-        Text("${memo.date.format(java.time.format.DateTimeFormatter.ofPattern("M/d (E)",java.util.Locale.KOREAN))}  ${memo.text}",
-            modifier=Modifier.padding(horizontal=10.dp,vertical=7.dp),fontSize=12.sp,lineHeight=18.sp,color=Ink)
+    LaunchedEffect(copied) {if(copied) {kotlinx.coroutines.delay(1000);copied=false}}
+    val border by androidx.compose.animation.animateColorAsState(if(copied)Coral else palette.border,label="memoCopy")
+    fun copyMemo() {
+        clipboard.setText(AnnotatedString(memo.text))
+        haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+        copied=true
+    }
+    Surface(modifier=Modifier.fillMaxWidth().combinedClickable(onClick={draft=memo.text;editing=true},
+        onLongClickLabel="메모 복사",onLongClick={copyMemo()}),shape=RoundedCornerShape(10.dp),color=if(copied)Peach else Color.White,
+        border=androidx.compose.foundation.BorderStroke(if(copied)2.dp else 1.dp,border)) {
+        Column(Modifier.padding(horizontal=10.dp,vertical=7.dp),verticalArrangement=Arrangement.spacedBy(3.dp)) {
+            Text("${memo.date.format(java.time.format.DateTimeFormatter.ofPattern("M/d (E)",java.util.Locale.KOREAN))}  ${memo.text}",fontSize=12.sp,lineHeight=18.sp,color=Ink)
+            if(memo.reactions.isNotEmpty()) Row(horizontalArrangement=Arrangement.spacedBy(5.dp)) {
+                memo.reactions.values.groupingBy {it}.eachCount().forEach {(emoji,count) ->
+                    Text("$emoji $count",fontSize=11.sp,modifier=Modifier.background(Cream,RoundedCornerShape(6.dp)).padding(horizontal=5.dp,vertical=2.dp))
+                }
+            }
+        }
     }
     if(editing) AlertDialog(onDismissRequest={if(!vm.busy)editing=false},containerColor=Cream,
-        title={Text("${memo.date.monthValue}/${memo.date.dayOfMonth} 메모 편집")},
+        title={Text("${memo.date.monthValue}/${memo.date.dayOfMonth} 메모")},
         text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(draft,{if(it.length<=2000)draft=it},enabled=!vm.busy,minLines=2,maxLines=6,modifier=Modifier.fillMaxWidth())
-            vm.memoStatus?.takeUnless {it=="메모를 저장했어요."||it=="메모를 삭제했어요."}?.let {Text(it,color=Muted,fontSize=12.sp)}
+            if(editable) OutlinedTextField(draft,{if(it.length<=2000)draft=it},enabled=!vm.busy,minLines=2,maxLines=6,modifier=Modifier.fillMaxWidth())
+            else Text(memo.text,fontSize=14.sp)
+            TextButton(onClick={copyMemo()}) {Text(if(copied)"복사했어요" else "본문 복사")}
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+                MemoReactionEmojis.forEach {emoji ->
+                    TextButton(onClick={vm.reactToMemo(memo,emoji)},enabled=!vm.busy,
+                        colors=ButtonDefaults.textButtonColors(containerColor=if(memo.reactions[vm.uid]==emoji)Peach else Color.Transparent),
+                        modifier=Modifier.size(40.dp),contentPadding=PaddingValues(0.dp)) {Text(emoji,fontSize=22.sp)}
+                }
+            }
+            if(editable) vm.memoStatus?.takeUnless {it=="메모를 저장했어요."||it=="메모를 삭제했어요."}?.let {Text(it,color=Muted,fontSize=12.sp)}
         }},
-        confirmButton={TextButton(onClick={vm.saveMemo(memo.date,draft,onSaved={editing=false})},enabled=!vm.busy&&draft.trim()!=memo.text) {Text("저장")}},
-        dismissButton={TextButton(onClick={editing=false},enabled=!vm.busy) {Text("취소")}})
+        confirmButton={if(editable) TextButton(onClick={vm.saveMemo(memo.date,draft,onSaved={editing=false})},enabled=!vm.busy&&draft.trim()!=memo.text) {Text("저장")}},
+        dismissButton={TextButton(onClick={editing=false},enabled=!vm.busy) {Text("닫기")}})
 }
 @Composable
 private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:LocalDate,end:LocalDate,today:LocalDate) {

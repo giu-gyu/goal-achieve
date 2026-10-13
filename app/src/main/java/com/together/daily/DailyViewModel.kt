@@ -118,7 +118,7 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         listeners += pair.collection("memos").addSnapshotListener(com.google.firebase.firestore.MetadataChanges.INCLUDE) { snapshot,e ->
             if(e!=null) {error="메모를 불러오지 못했습니다. Firebase 규칙을 확인하세요.";return@addSnapshotListener}
             if(snapshot?.metadata?.hasPendingWrites()==true) return@addSnapshotListener
-            memos=snapshot?.documents?.mapNotNull {doc -> runCatching {DailyMemo(doc.getString("ownerId")!!,LocalDate.parse(doc.getString("date")),doc.getString("text")!!)}.getOrNull()}.orEmpty()
+            memos=snapshot?.documents?.mapNotNull {doc -> runCatching {DailyMemo(doc.getString("ownerId")!!,LocalDate.parse(doc.getString("date")),doc.getString("text")!!,(doc.get("reactions") as? Map<*,*>)?.entries?.mapNotNull {entry -> (entry.value as? String)?.takeIf {it in MemoReactionEmojis}?.let {entry.key.toString() to it}}?.toMap().orEmpty())}.getOrNull()}.orEmpty()
         }
         listeners += pair.collection("profiles").addSnapshotListener {snapshot,e ->
             if(e!=null) {error="프로필을 불러오지 못했습니다. Firebase 규칙을 확인하세요.";return@addSnapshotListener}
@@ -168,13 +168,24 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
             require(uid.isNotBlank() && pairId.isNotBlank()) { "로그인과 커플 연결을 확인해주세요." }
             val ref=db!!.collection("pairs").document(pairId).collection("memos").document(uid+"_"+date)
             if(clean.isBlank()) ref.delete().await()
-            else ref.set(mapOf("ownerId" to uid,"date" to date.toString(),"text" to clean)).await()
+            else ref.set(mapOf("ownerId" to uid,"date" to date.toString(),"text" to clean),com.google.firebase.firestore.SetOptions.merge()).await()
         }
+        val reactions=memos.firstOrNull {it.ownerId==uid&&it.date==date}?.reactions.orEmpty()
         memos=memos.filterNot {it.ownerId==uid&&it.date==date} +
-            if(clean.isBlank()) emptyList() else listOf(DailyMemo(uid,date,clean))
+            if(clean.isBlank()) emptyList() else listOf(DailyMemo(uid,date,clean,reactions))
         memoStatus = if(clean.isBlank()) "메모를 삭제했어요." else "메모를 저장했어요."
         if(memoDraft(date)==text) memoDraftStore.edit().remove(uid+"_"+date).apply()
         onSaved()
+    }
+    fun reactToMemo(memo:DailyMemo,emoji:String)=work {
+        require(uid.isNotBlank()&&pairId.isNotBlank())
+        val current=memos.firstOrNull {it.ownerId==memo.ownerId&&it.date==memo.date}
+            ?:error("메모가 삭제됐어요.")
+        val updated=current.reactedBy(uid,emoji)
+        if(!demo) db!!.collection("pairs").document(pairId).collection("memos").document(memo.ownerId+"_"+memo.date)
+            .update(com.google.firebase.firestore.FieldPath.of("reactions",uid),
+                updated.reactions[uid]?:com.google.firebase.firestore.FieldValue.delete()).await()
+        memos=memos.map {if(it.ownerId==memo.ownerId&&it.date==memo.date)it.copy(reactions=updated.reactions) else it}
     }
     fun setDaySchedule(date:LocalDate,schedule:GoalSchedule)=work {
 
