@@ -119,7 +119,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
                     if(vm.demo) StatusPill("체험 모드",Lilac,Lavender)
                     else if(vm.offline) StatusPill("연결을 기다리고 있어요 · 기록은 보관 중",Muted,Line)
                     when(tab) {
-                        0 -> TodayPage(vm,selectedDate,today,vm.scheduleFor(selectedDate),onDateChange={selectedDateText=if(it==today)null else it.toString()},onEdit={goalSchedule=vm.scheduleFor(selectedDate);editing=true},onCelebrate={celebration++},onMemoSaved={notice=it;noticeTrigger++})
+                        0 -> TodayPage(vm,selectedDate,today,onDateChange={selectedDateText=if(it==today)null else it.toString()},onEdit={editing=true},onCelebrate={celebration++},onMemoSaved={notice=it;noticeTrigger++})
                         1 -> HistoryPage(vm,today)
                         2,3 -> StatsPage(vm,today,onLogout={vm.logout();tab=0})
                     }
@@ -140,7 +140,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
         }
     }
     if(profileOpen&&vm.pairId.isNotEmpty()) ProfileDialog(vm,onDismiss={profileOpen=false})
-    if(editing) GoalEditor(vm,selectedDate,goalSchedule,onSchedule={goalSchedule=it},onAdd={adding=true},onDismiss={editing=false})
+    if(editing) GoalEditor(vm,onAdd={goalSchedule=GoalSchedule.ALL;adding=true},onDismiss={editing=false})
     if(adding) {
         val ownGoals=vm.goals.filter {it.ownerId==vm.uid}
         var position by rememberSaveable {mutableIntStateOf(ownGoals.size)}
@@ -152,7 +152,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
             title={Text("목표 추가",fontWeight=FontWeight.Bold,fontSize=22.sp)},
             text={Column(verticalArrangement=Arrangement.spacedBy(14.dp)) {
                 Text("분류와 주당 횟수를 선택하지 않으면 매일 목표예요.",color=Muted,fontSize=14.sp,lineHeight=22.sp)
-                GoalSettings(schedule,target,!vm.busy,onSchedule={schedule=it},onTarget={target=it})
+                GoalSettings(schedule,target,!vm.busy,onSchedule={schedule=it;target=null},onTarget={target=it})
                 OutlinedTextField(title,{if(it.length<=60)title=it},singleLine=true,
                     placeholder={Text("목표 이름",fontSize=13.sp)},shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth())
 
@@ -188,7 +188,7 @@ private fun BottomMenu(selected: Int,onSelect:(Int)->Unit) {
 }
 
 @Composable
-private fun TodayPage(vm:DailyViewModel,today:LocalDate,currentDate:LocalDate,schedule:GoalSchedule,onDateChange:(LocalDate)->Unit,onEdit:()->Unit,onCelebrate:()->Unit,onMemoSaved:(String)->Unit) {
+private fun TodayPage(vm:DailyViewModel,today:LocalDate,currentDate:LocalDate,onDateChange:(LocalDate)->Unit,onEdit:()->Unit,onCelebrate:()->Unit,onMemoSaved:(String)->Unit) {
     var owner by rememberSaveable { mutableIntStateOf(0) }
     val id=if(owner==0) vm.uid else vm.names.keys.firstOrNull {it!=vm.uid}.orEmpty()
     val list=vm.goals.filter {it.ownerId==id&&it.scheduled(today)}
@@ -246,7 +246,7 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,currentDate:LocalDate,sc
     }
 }
 @Composable
-private fun GoalEditor(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,onSchedule:(GoalSchedule)->Unit,onAdd:()->Unit,onDismiss:()->Unit) {
+private fun GoalEditor(vm:DailyViewModel,onAdd:()->Unit,onDismiss:()->Unit) {
     var deleting by remember {mutableStateOf<Goal?>(null)}
     var reordering by remember {mutableStateOf(false)}
     val goals=vm.goals.filter {it.ownerId==vm.uid}

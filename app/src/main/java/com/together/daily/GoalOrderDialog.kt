@@ -42,7 +42,7 @@ internal fun GoalOrderDialog(vm:DailyViewModel,onDismiss:()->Unit) {
     Dialog(onDismissRequest={if(!vm.busy)onDismiss()},properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Surface(modifier=Modifier.fillMaxWidth(.98f),shape=RoundedCornerShape(22.dp),color=Cream) {
             Column(Modifier.heightIn(max=maxHeight).padding(12.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                Text("${schedule.label} 목표 순서변경",style=MaterialTheme.typography.titleLarge)
+                Text("목표 순서변경",style=MaterialTheme.typography.titleLarge)
                 Text("목표를 끌어서 순서를 바꾸세요. 양옆 여백을 쓸어 목록을 스크롤할 수 있어요.",color=Muted,style=MaterialTheme.typography.bodySmall)
                 BoxWithConstraints(Modifier.weight(1f,fill=false).fillMaxWidth()) {
                     val cardWidth=minOf(280.dp,(maxWidth-64.dp).coerceAtLeast(120.dp))
