@@ -109,31 +109,18 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
     }
     if(weekOffset!=0L) TextButton(onClick={weekOffset=0L},contentPadding=PaddingValues(4.dp),modifier=Modifier.align(Alignment.CenterHorizontally).height(30.dp)) {Text(if(monthly)"이번 달" else "이번 주",fontSize=11.sp)}
     val members=vm.names.entries.sortedBy {if(it.key==vm.uid)0 else 1}
-    GoalSchedule.entries.forEach { schedule ->
-        val palette=sectionPalette(schedule)
+    members.forEach {member ->
+        val palette=recordPalette(vm.profiles[member.key]?.gender)
         Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(24.dp),color=palette.background,
             border=androidx.compose.foundation.BorderStroke(1.dp,palette.border)) {
             Column(Modifier.padding(horizontal=12.dp,vertical=8.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
-                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically) {
-                    HorizontalDivider(Modifier.weight(1f),color=palette.border)
-                    Row(Modifier.padding(horizontal=12.dp).background(palette.header,RoundedCornerShape(50)).padding(horizontal=18.dp,vertical=5.dp),
-                        horizontalArrangement=Arrangement.spacedBy(7.dp),verticalAlignment=Alignment.CenterVertically) {
-                        Mark(if(schedule==GoalSchedule.WEEKDAY)Symbol.Calendar else Symbol.Leaf,color=palette.accent,modifier=Modifier.size(18.dp))
-                        Text(schedule.label,fontSize=14.sp,fontWeight=FontWeight.Bold,color=palette.accent,textAlign=TextAlign.Center)
-                    }
-                    HorizontalDivider(Modifier.weight(1f),color=palette.border)
-                }
-                members.forEachIndexed {index,member ->
-                    if(index>0) HorizontalDivider(color=palette.border)
-                    val memberPalette=recordPalette(vm.profiles[member.key]?.gender)
-                    WeeklyRecords(vm,member.key,vm.memberLabel(member.key),start,end,today,schedule)
-                    val memos=vm.memos.filter {
-                        it.ownerId==member.key&&it.date>=start&&it.date<=end&&vm.scheduleFor(it.date)==schedule&&it.text.isNotBlank()
-                    }.sortedBy {it.date}
-                    if(memos.isNotEmpty()) {
-                        Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
-                            memos.forEach {memo->RecordMemoCard(vm,memo,memberPalette)}
-                        }
+                WeeklyRecords(vm,member.key,vm.memberLabel(member.key),start,end,today)
+                val memos=vm.memos.filter {
+                    it.ownerId==member.key&&it.date>=start&&it.date<=end&&it.text.isNotBlank()
+                }.sortedBy {it.date}
+                if(memos.isNotEmpty()) {
+                    Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                        memos.forEach {memo->RecordMemoCard(vm,memo,palette)}
                     }
                 }
             }
@@ -153,10 +140,6 @@ ProfileGender.MALE ->
 ProfileGender.FEMALE -> RecordPalette(Color(0xFF72528D),Color(0xFFF5F0FA),Color(0xFFE8DDF2),Color(0xFFD4C3E3),Color(0xFFFCFAFF))
 null -> RecordPalette(Ink,Color(0xFFF4F5F6),Color(0xFFE9ECF0),Color(0xFFD3D9E0),Color(0xFFFAFBFC))
 }
-
-private fun sectionPalette(schedule:GoalSchedule)=if(schedule==GoalSchedule.WEEKDAY)
-    RecordPalette(Ink,Color(0xFFFAF8F5),Color.White,Color(0xFFE3DFDA),Color.White)
-else RecordPalette(Ink,Color(0xFFF0F3F6),Color.White,Color(0xFFD5DDE5),Color.White)
 
 @Composable
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -184,11 +167,11 @@ private fun RecordMemoCard(vm:DailyViewModel,memo:DailyMemo,palette:RecordPalett
         dismissButton={TextButton(onClick={editing=false},enabled=!vm.busy) {Text("취소")}})
 }
 @Composable
-private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:LocalDate,end:LocalDate,today:LocalDate,schedule:GoalSchedule) {
+private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:LocalDate,end:LocalDate,today:LocalDate) {
     val palette=recordPalette(vm.profiles[ownerId]?.gender)
-    val goals=vm.goals.filter {it.ownerId==ownerId&&it.schedule==schedule&&it.start<=end&&(it.end==null||it.end>=start)}
+    val goals=vm.goals.filter {it.ownerId==ownerId&&it.start<=end&&(it.end==null||it.end>=start)}
     val records=vm.entries.associateBy {it.goalId to it.date}
-    val days=generateSequence(start){it.plusDays(1)}.takeWhile {it<=end}.filter {vm.scheduleFor(it)==schedule}.toList()
+    val days=generateSequence(start){it.plusDays(1)}.takeWhile {it<=end}.toList()
     val weekBoundaries=days.zipWithNext().filter {(previous,next)->weekStart(previous)!=weekStart(next)}.map {it.second}.toSet()
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)) {
         Text(name,fontSize=14.sp,fontWeight=FontWeight.Bold,color=palette.accent)
@@ -257,10 +240,8 @@ internal fun StatsPage(vm:DailyViewModel,today:LocalDate,onLogout:()->Unit) {
             Text(if(monthly)"${start.year}년 ${start.monthValue}월" else "${start.monthValue}/${start.dayOfMonth} – ${end.monthValue}/${end.dayOfMonth} · ${start.year}",fontSize=12.sp,textAlign=TextAlign.Center,modifier=Modifier.weight(1f))
             IconButton(onClick={offset++},enabled=offset<0,modifier=Modifier.size(36.dp)) {Mark(Symbol.Next,color=if(offset<0)Ink else Line,description="다음 기간")}
         }
-        GoalSchedule.entries.forEach { schedule ->
-        Text(schedule.label,fontSize=if(schedule==GoalSchedule.WEEKDAY)18.sp else 15.sp,fontWeight=FontWeight.Bold,color=if(schedule==GoalSchedule.WEEKDAY)Ink else Muted)
         vm.names.entries.sortedBy {if(it.key==vm.uid)0 else 1}.forEach {member ->
-            val ranked=vm.goals.filter {it.ownerId==member.key&&it.schedule==schedule&&it.start<=minOf(end,today)&&(it.end==null||it.end>=start)}
+            val ranked=vm.goals.filter {it.ownerId==member.key&&it.start<=minOf(end,today)&&(it.end==null||it.end>=start)}
                 .map {it to progress(it,vm.entries,start,end,today)}
                 .sortedWith(compareByDescending<Pair<Goal,Progress>> {(_,p)->if(p.total==0)-1.0 else p.done.toDouble()/p.total}.thenByDescending {it.second.done}.thenBy {it.first.title})
             val values=ranked.map {it.second}
@@ -290,7 +271,6 @@ internal fun StatsPage(vm:DailyViewModel,today:LocalDate,onLogout:()->Unit) {
                     }
                 }
             }
-        }
         }
     }
 }
