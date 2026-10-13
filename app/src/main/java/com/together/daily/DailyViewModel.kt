@@ -161,7 +161,7 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
             "저장 권한이 거부됐어요. Firebase에 최신 규칙이 게시됐는지 확인해주세요. 입력한 메모는 유지됩니다."
         else "서버 저장을 확인하지 못했어요. 입력한 메모는 보관했습니다. 연결 복구 후 기록을 확인해주세요."
     }) {
-        require(text.length<=2000 && date<=koreaToday()) { "메모는 오늘까지, 2000자 이하로 입력해주세요." }
+        require(text.length<=2000) { "메모는 2000자 이하로 입력해주세요." }
         memoStatus = "메모 저장 중…"
         val clean = text.trim()
         if (!demo) {
@@ -177,7 +177,7 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         onSaved()
     }
     fun setDaySchedule(date:LocalDate,schedule:GoalSchedule)=work {
-        require(date==koreaToday()) {"오늘의 분류만 변경할 수 있어요."}
+
         if(!demo) db!!.collection("pairs").document(pairId).collection("daySchedules").document(date.toString())
             .set(mapOf("schedule" to schedule.name,"ownerId" to uid)).await()
         dateSchedules=dateSchedules+(date to schedule)
@@ -293,7 +293,7 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
             .update("end", koreaToday().toString()).await()
     }
     fun record(goal: Goal, date: LocalDate, done: Boolean?,onSaved:()->Unit={}) = work {
-        require(goal.ownerId == uid && goal.scheduled(date) && date <= koreaToday())
+        require(goal.ownerId == uid && goal.scheduled(date))
         if (!demo) {
             val ref = db!!.collection("pairs").document(pairId).collection("entries").document(goal.id + "_" + date)
             if (done == null) ref.delete().await()

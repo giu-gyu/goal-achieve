@@ -72,6 +72,8 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
         if(notice!=null) {kotlinx.coroutines.delay(1800);notice=null}
     }
     var today by remember { mutableStateOf(koreaToday()) }
+    var selectedDateText by rememberSaveable { mutableStateOf<String?>(null) }
+    val selectedDate=selectedDateText?.let(LocalDate::parse)?:today
     val scroll = rememberScrollState()
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(Unit) { while(true) { today=koreaToday(); kotlinx.coroutines.delay(30_000) } }
@@ -118,7 +120,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
                     if(vm.demo) StatusPill("체험 모드",Lilac,Lavender)
                     else if(vm.offline) StatusPill("연결을 기다리고 있어요 · 기록은 보관 중",Muted,Line)
                     when(tab) {
-                        0 -> TodayPage(vm,today,vm.scheduleFor(today),onEdit={goalSchedule=vm.scheduleFor(today);editing=true},onCelebrate={celebration++},onMemoSaved={notice=it;noticeTrigger++})
+                        0 -> TodayPage(vm,selectedDate,today,vm.scheduleFor(selectedDate),onDateChange={selectedDateText=if(it==today)null else it.toString()},onEdit={goalSchedule=vm.scheduleFor(selectedDate);editing=true},onCelebrate={celebration++},onMemoSaved={notice=it;noticeTrigger++})
                         1 -> HistoryPage(vm,today)
                         2,3 -> StatsPage(vm,today,onLogout={vm.logout();tab=0})
                     }
@@ -139,7 +141,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
         }
     }
     if(profileOpen&&vm.pairId.isNotEmpty()) ProfileDialog(vm,onDismiss={profileOpen=false})
-    if(editing) GoalEditor(vm,today,goalSchedule,onSchedule={goalSchedule=it},onAdd={adding=true},onDismiss={editing=false})
+    if(editing) GoalEditor(vm,selectedDate,goalSchedule,onSchedule={goalSchedule=it},onAdd={adding=true},onDismiss={editing=false})
     if(adding) {
         val ownGoals=vm.goals.filter {it.ownerId==vm.uid&&it.schedule==goalSchedule}
         var position by rememberSaveable {mutableIntStateOf(ownGoals.size)}
@@ -187,12 +189,17 @@ private fun BottomMenu(selected: Int,onSelect:(Int)->Unit) {
 }
 
 @Composable
-private fun TodayPage(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,onEdit:()->Unit,onCelebrate:()->Unit,onMemoSaved:(String)->Unit) {
+private fun TodayPage(vm:DailyViewModel,today:LocalDate,currentDate:LocalDate,schedule:GoalSchedule,onDateChange:(LocalDate)->Unit,onEdit:()->Unit,onCelebrate:()->Unit,onMemoSaved:(String)->Unit) {
     var owner by rememberSaveable { mutableIntStateOf(0) }
     val id=if(owner==0) vm.uid else vm.names.keys.firstOrNull {it!=vm.uid}.orEmpty()
     val list=vm.goals.filter {it.ownerId==id&&it.schedule==schedule&&it.start<=today&&(it.end==null||it.end>=today)}
     val done=list.count {g->vm.entries.any {it.goalId==g.id&&it.date==today&&it.done}}
     SoftCard(color=Peach.copy(alpha=.65f)) {
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween) {
+            TextButton(onClick={onDateChange(today.minusDays(1))},enabled=!vm.busy) {Text("‹ 이전 날")}
+            TextButton(onClick={onDateChange(currentDate)},enabled=!vm.busy&&today!=currentDate) {Text("오늘로")}
+            TextButton(onClick={onDateChange(today.plusDays(1))},enabled=!vm.busy) {Text("다음 날 ›")}
+        }
         Text(today.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일 E요일",Locale.KOREAN)),color=Ink,fontSize=19.sp,fontWeight=FontWeight.Bold)
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             Text("${list.size}개 중 ${done}개 완수",color=Coral,fontSize=16.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
@@ -202,7 +209,7 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,on
     }
 
     OwnerSwitch(vm,owner){owner=it}
-    if(list.isEmpty()) Text("오늘 등록된 목표가 없습니다.",color=Muted,fontSize=14.sp)
+    if(list.isEmpty()) Text("선택한 날짜에 등록된 목표가 없습니다.",color=Muted,fontSize=14.sp)
     list.forEach {goal -> GoalTile(goal,vm.entries.find {it.goalId==goal.id&&it.date==today}?.done,
         editable=id==vm.uid&&!vm.busy&&goal.scheduled(today),onRecord={value ->
             val previouslyRecorded=allGoalsRecorded(list,vm.entries,today)
@@ -257,7 +264,7 @@ private fun GoalEditor(vm:DailyViewModel,today:LocalDate,schedule:GoalSchedule,o
                     val otherSchedule=if(currentDaySchedule==GoalSchedule.WEEKDAY)GoalSchedule.WEEKEND else GoalSchedule.WEEKDAY
                     val otherLabel=if(otherSchedule==GoalSchedule.WEEKDAY)"평일" else "주말"
                     Column(verticalArrangement=Arrangement.spacedBy(2.dp)) {
-                        Text("오늘은 \"${currentLabel}\"인데 \"${otherLabel}\"로 바꿀까요?",fontSize=12.sp,color=Muted)
+                        Text("${today.format(DateTimeFormatter.ofPattern("M월 d일"))}은 \"${currentLabel}\"인데 \"${otherLabel}\"로 바꿀까요?",fontSize=12.sp,color=Muted)
                         TextButton(onClick={vm.setDaySchedule(today,otherSchedule);onSchedule(otherSchedule)},enabled=!vm.busy,
                             contentPadding=PaddingValues(horizontal=8.dp,vertical=0.dp),modifier=Modifier.height(32.dp)) {Text("${otherLabel}로 바꾸기",fontSize=12.sp)}
                     }
