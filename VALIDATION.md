@@ -137,3 +137,9 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - 앰버/로즈/틸 색상과 기록 표 우측 범례, 동일 행 주당 횟수 배지 적용.
 - assembleDebug + testDebugUnitTest + lintDebug 성공. 단위 테스트 35/35 통과 (평일 공휴일 2일 주간 3/4일 분모, 매일 7일, 반응 독립/취소 및 본문 변경 유지 포함).
 - APK 두 파일 갱신. ADB 연결 기기 없음. 실제 휴대폰 화면·프로필 저장·반응 공유 검증과 휴대폰 업데이트는 미수행.
+
+## 오늘 버튼·분류 선택·범례 배지 업데이트 (2026-10-14)
+
+- 중앙 빨간 오늘 버튼, 목표 분류 3개 버튼 및 0~7 확장 선택(0=해제), 기록 배경색 범례 배지 적용.
+- assembleDebug/testDebugUnitTest/lintDebug 성공. 테스트 35/35 통과.
+- APK 두 파일 갱신. SM-S928N 내장 저장공간·Download에 복사, SHA-256 일치 확인. install -r 성공 및 앱 실행.
