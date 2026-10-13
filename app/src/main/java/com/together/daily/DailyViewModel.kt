@@ -183,14 +183,17 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         dateSchedules=dateSchedules+(date to schedule)
         goals=goals.map {it.copy(dateSchedules=dateSchedules)}
     }
-    fun saveProfile(name:String,bio:String,resolve:String,gender:ProfileGender?=profiles[uid]?.gender,emojiStyle:Int=profiles[uid]?.emojiStyle?:0)=work {
+    fun saveProfile(name:String,bio:String,resolve:String,gender:ProfileGender?=profiles[uid]?.gender,emojiStyle:Int=profiles[uid]?.emojiStyle?:0,onSaved:()->Unit={})=work {
         require(name.trim().length in 1..20&&bio.length<=200&&resolve.length<=200&&emojiStyle in MemberEmojiStyles.indices)
-        if(demo) {names=names+(uid to name.trim());profiles=profiles+(uid to MemberProfile(bio.trim(),resolve.trim(),gender,emojiStyle));return@work}
+        if(demo) {names=names+(uid to name.trim());profiles=profiles+(uid to MemberProfile(bio.trim(),resolve.trim(),gender,emojiStyle));onSaved();return@work}
         val pair=db!!.collection("pairs").document(pairId)
         val batch=db.batch()
         batch.update(pair,com.google.firebase.firestore.FieldPath.of("names",uid),name.trim())
         batch.set(pair.collection("profiles").document(uid),mapOf("bio" to bio.trim(),"resolve" to resolve.trim(),"gender" to gender?.name,"emojiStyle" to emojiStyle))
         batch.commit().await()
+        names=names+(uid to name.trim())
+        profiles=profiles+(uid to MemberProfile(bio.trim(),resolve.trim(),gender,emojiStyle))
+        onSaved()
     }
     fun addGoal(title:String,position:Int?=null,schedule:GoalSchedule=if(KoreanHolidays.isRestDay(koreaToday())) GoalSchedule.WEEKEND else GoalSchedule.WEEKDAY,weeklyTarget:Int?=null,onSaved:()->Unit={})=work {
         require(title.trim().length in 1..60) {"목표는 1~60자로 입력해주세요."}

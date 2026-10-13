@@ -27,7 +27,7 @@ internal fun ProfileDialog(vm:DailyViewModel,onDismiss:()->Unit) {
     var gender by rememberSaveable(vm.uid,profile.gender) {mutableStateOf(profile.gender)}
     var emojiStyle by rememberSaveable(vm.uid,profile.emojiStyle) {mutableIntStateOf(profile.emojiStyle)}
     var resolve by rememberSaveable(vm.uid,profile.resolve) {mutableStateOf(profile.resolve)}
-    AlertDialog(onDismissRequest=onDismiss,title={Text("내 프로필",fontSize=18.sp)},
+    AlertDialog(onDismissRequest={if(!vm.busy)onDismiss()},title={Text("내 프로필",fontSize=18.sp)},
         text={Column(Modifier.fillMaxWidth().heightIn(max=480.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(name,{if(it.length<=20)name=it},label={Text("이름")},singleLine=true,modifier=Modifier.fillMaxWidth())
             Text("성별 · 남자 블루 / 여자 보라",fontSize=12.sp,color=Muted)
@@ -55,8 +55,7 @@ internal fun ProfileDialog(vm:DailyViewModel,onDismiss:()->Unit) {
             }
             OutlinedTextField(bio,{if(it.length<=200)bio=it},label={Text("자기소개")},maxLines=3,modifier=Modifier.fillMaxWidth())
             OutlinedTextField(resolve,{if(it.length<=200)resolve=it},label={Text("각오")},maxLines=3,modifier=Modifier.fillMaxWidth())
-            TextButton(onClick={vm.saveProfile(name,bio,resolve,gender,emojiStyle)},enabled=!vm.busy&&name.isNotBlank()) {Text("프로필 저장")}
-            Text("저장된 이름: ${vm.names[vm.uid].orEmpty()}",fontSize=11.sp,color=Muted)
 
-        }},confirmButton={TextButton(onClick=onDismiss){Text("닫기")}})
+        }},confirmButton={Button(onClick={vm.saveProfile(name,bio,resolve,gender,emojiStyle,onSaved=onDismiss)},enabled=!vm.busy&&name.isNotBlank()) {Text(if(vm.busy)"저장 중…" else "저장")}},
+        dismissButton={TextButton(onClick=onDismiss,enabled=!vm.busy){Text("취소")}})
 }
