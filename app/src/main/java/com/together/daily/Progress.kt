@@ -54,12 +54,27 @@ fun achievementCutoff(goals:List<Goal>,entries:List<Entry>,today:LocalDate):Loca
 fun weekStart(date: LocalDate): LocalDate = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 
 val MemoReactionEmojis=listOf("❤️","👍","👏","🥰","🔥","😂")
-data class DailyMemo(val ownerId:String,val date:LocalDate,val text:String,val reactions:Map<String,String> = emptyMap()) {
+data class DailyMemo(val ownerId:String,val date:LocalDate,val text:String,val reactions:Map<String,List<String>> = emptyMap(),val id:String=ownerId+"_"+date,val createdAt:Long=0) {
     fun reactedBy(memberId:String,emoji:String):DailyMemo {
         require(memberId.isNotBlank()&&emoji in MemoReactionEmojis)
-        return copy(reactions=if(reactions[memberId]==emoji)reactions-memberId else reactions+(memberId to emoji))
+        val current=reactions[memberId].orEmpty()
+        val selected=if(emoji in current)current-emoji else current+emoji
+        return copy(reactions=if(selected.isEmpty())reactions-memberId else reactions+(memberId to selected))
     }
 }
+
+internal fun memoReactions(raw:Any?):Map<String,List<String>> =
+    (raw as? Map<*,*>)?.entries?.mapNotNull {entry ->
+        val values=when(val value=entry.value) {
+            is String -> listOf(value)
+            is List<*> -> value.filterIsInstance<String>()
+            else -> emptyList()
+        }.filter {it in MemoReactionEmojis}.distinct()
+        if(values.isEmpty())null else entry.key.toString() to values
+    }?.toMap().orEmpty()
+
+internal fun List<DailyMemo>.withMemo(memo:DailyMemo):List<DailyMemo> = filterNot {it.id==memo.id}+memo
+
 enum class ProfileGender { MALE, FEMALE }
 data class MemberProfile(val bio:String="",val resolve:String="",val gender:ProfileGender?=null,val emojiStyle:Int=0)
 
@@ -77,4 +92,4 @@ fun daySuccessPercent(goals:List<Goal>,entries:List<Entry>,date:LocalDate,today:
 fun allGoalsRecorded(goals:List<Goal>,entries:List<Entry>,date:LocalDate):Boolean =
     goals.isNotEmpty()&&goals.all {goal->entries.any {it.goalId==goal.id&&it.date==date}}
 
-fun List<DailyMemo>.memoFor(ownerId:String,date:LocalDate):String = firstOrNull {it.ownerId==ownerId&&it.date==date}?.text.orEmpty()
+fun List<DailyMemo>.memoFor(ownerId:String,date:LocalDate):String = filter {it.ownerId==ownerId&&it.date==date}.sortedBy {it.createdAt}.joinToString("\n") {it.text}

@@ -237,11 +237,15 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,currentDate:LocalDate,on
             Text("${vm.names[id].orEmpty().ifBlank {"짝꿍"}}의 ${if(today==currentDate)"오늘 메모" else "선택한 날짜의 메모"}",fontSize=14.sp,fontWeight=FontWeight.SemiBold)
             Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp),color=Color.White,
                 border=androidx.compose.foundation.BorderStroke(1.dp,Line)) {
-                Text("저장된 메모는 기록 탭에서 확인하세요.",modifier=Modifier.padding(12.dp),fontSize=13.sp,lineHeight=20.sp,color=Muted)
+                Text("메모를 길게 누르면 메뉴를 열 수 있어요.",modifier=Modifier.padding(12.dp),fontSize=13.sp,lineHeight=20.sp,color=Muted)
             }
         }
     }
     }
+    vm.memos.filter {it.ownerId==id&&it.date==today}.sortedWith(compareBy<DailyMemo> {it.createdAt}.thenBy {it.id}).forEach {memo ->
+        key(memo.id) {MemoCard(vm,memo)}
+    }
+
 }
 @Composable
 private fun GoalEditor(vm:DailyViewModel,onAdd:()->Unit,onDismiss:()->Unit) {

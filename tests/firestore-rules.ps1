@@ -120,5 +120,16 @@ $taskMale=Invoke-RestMethod -Uri "$taskBase/pairs/$taskPair/profiles/alice" -Hea
 $taskFemale=Invoke-RestMethod -Uri "$taskBase/pairs/$taskPair/profiles/bob" -Headers @{Authorization='Bearer '+(Token 'alice')}
 if($taskMale.fields.gender.stringValue -ne 'MALE' -or $taskFemale.fields.gender.stringValue -ne 'FEMALE' -or $taskMale.fields.emojiStyle.integerValue -ne '4' -or $taskFemale.fields.emojiStyle.integerValue -ne '4' -or $taskMale.fields.bio.stringValue -ne 'Hello') {throw 'Profile gender, emoji or biography did not persist'}
 Check 'outsider cannot read emoji profile' 'mallory' 'GET' "$taskBase/pairs/$taskPair/profiles/alice" $null 403
+$taskMemoOne=@{ownerId='alice';date=$today;text='First memo';createdAt=1;reactions=@{alice=@('❤️','🔥');bob=@('👍')}}
+$taskMemoTwo=@{ownerId='alice';date=$today;text='Second memo';createdAt=2}
+Check 'first independent daily memo' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/memos/multi-one" $taskMemoOne))} 200
+Check 'second independent daily memo' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/memos/multi-two" $taskMemoTwo))} 200
+$taskFirst=Invoke-RestMethod -Uri "$taskBase/pairs/$taskPair/memos/multi-one" -Headers @{Authorization='Bearer '+(Token 'bob')}
+$taskSecond=Invoke-RestMethod -Uri "$taskBase/pairs/$taskPair/memos/multi-two" -Headers @{Authorization='Bearer '+(Token 'bob')}
+if($taskFirst.fields.text.stringValue -ne 'First memo' -or $taskSecond.fields.text.stringValue -ne 'Second memo') {throw 'Independent daily memos did not persist'}
+if($taskFirst.fields.reactions.mapValue.fields.alice.arrayValue.values.Count -ne 2) {throw 'Multiple reactions did not persist'}
+Check 'delete only second memo' 'alice' 'DELETE' "$taskBase/pairs/$taskPair/memos/multi-two" $null 200
+Check 'first memo survives deletion' 'bob' 'GET' "$taskBase/pairs/$taskPair/memos/multi-one" $null 200
+Check 'outsider cannot read independent memo' 'mallory' 'GET' "$taskBase/pairs/$taskPair/memos/multi-one" $null 403
 Check 'partner deletes pair' 'bob' 'DELETE' "$taskBase/pairs/$taskPair" $null 200
 Write-Host "$script:passed security checks passed."

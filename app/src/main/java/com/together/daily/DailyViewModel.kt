@@ -116,7 +116,11 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         listeners += pair.collection("memos").addSnapshotListener(com.google.firebase.firestore.MetadataChanges.INCLUDE) { snapshot,e ->
             if(e!=null) {error="메모를 불러오지 못했습니다. Firebase 규칙을 확인하세요.";return@addSnapshotListener}
             if(snapshot?.metadata?.hasPendingWrites()==true) return@addSnapshotListener
-            memos=snapshot?.documents?.mapNotNull {doc -> runCatching {DailyMemo(doc.getString("ownerId")!!,LocalDate.parse(doc.getString("date")),doc.getString("text")!!,(doc.get("reactions") as? Map<*,*>)?.entries?.mapNotNull {entry -> (entry.value as? String)?.takeIf {it in MemoReactionEmojis}?.let {entry.key.toString() to it}}?.toMap().orEmpty())}.getOrNull()}.orEmpty()
+            memos=snapshot?.documents?.mapNotNull {doc -> runCatching {
+                DailyMemo(doc.getString("ownerId")!!,LocalDate.parse(doc.getString("date")),doc.getString("text")!!,
+                    memoReactions(doc.get("reactions")),doc.id,doc.getLong("createdAt")?:0)
+            }.getOrNull()}.orEmpty()
+
         }
         listeners += pair.collection("profiles").addSnapshotListener {snapshot,e ->
             if(e!=null) {error="프로필을 불러오지 못했습니다. Firebase 규칙을 확인하세요.";return@addSnapshotListener}
@@ -154,28 +158,48 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         require(text.length<=2000) { "메모는 2000자 이하로 입력해주세요." }
         memoStatus = "메모 저장 중…"
         val clean = text.trim()
+        require(clean.isNotBlank()) {"메모를 입력해주세요."}
+        val pendingKey=uid+"_"+date+"_pending_id"
+        val pendingTextKey=pendingKey+"_text"
+        val id=memoDraftStore.getString(pendingKey,null)?.takeIf {memoDraftStore.getString(pendingTextKey,null)==clean}
+            ?:UUID.randomUUID().toString().also {
+                memoDraftStore.edit().putString(pendingKey,it).putString(pendingTextKey,clean).apply()
+            }
+        val createdAt=System.currentTimeMillis()
         if (!demo) {
             require(uid.isNotBlank() && pairId.isNotBlank()) { "로그인과 커플 연결을 확인해주세요." }
-            val ref=db!!.collection("pairs").document(pairId).collection("memos").document(uid+"_"+date)
-            if(clean.isBlank()) ref.delete().await()
-            else ref.set(mapOf("ownerId" to uid,"date" to date.toString(),"text" to clean),com.google.firebase.firestore.SetOptions.merge()).await()
+            db!!.collection("pairs").document(pairId).collection("memos").document(id)
+                .set(mapOf("ownerId" to uid,"date" to date.toString(),"text" to clean,"createdAt" to createdAt),com.google.firebase.firestore.SetOptions.merge()).await()
         }
-        val reactions=memos.firstOrNull {it.ownerId==uid&&it.date==date}?.reactions.orEmpty()
-        memos=memos.filterNot {it.ownerId==uid&&it.date==date} +
-            if(clean.isBlank()) emptyList() else listOf(DailyMemo(uid,date,clean,reactions))
-        memoStatus = if(clean.isBlank()) "메모를 삭제했어요." else "메모를 저장했어요."
+        val reactions=memos.firstOrNull {it.id==id}?.reactions.orEmpty()
+        memos=memos.withMemo(DailyMemo(uid,date,clean,reactions,id,createdAt))
+        memoStatus = "메모를 저장했어요."
+        memoDraftStore.edit().remove(pendingKey).remove(pendingTextKey).apply()
         if(memoDraft(date)==text) memoDraftStore.edit().remove(uid+"_"+date).apply()
+        onSaved()
+    }
+    fun updateMemo(memo:DailyMemo,text:String,onSaved:()->Unit={}) = work(onFailure={memoStatus="메모를 수정하지 못했어요. 입력한 내용은 유지됩니다."}) {
+        require(memo.ownerId==uid && text.length<=2000)
+        require(memos.any {it.id==memo.id}) {"메모가 삭제됐어요."}
+        val clean=text.trim()
+        memoStatus="메모 저장 중…"
+        if(!demo) {
+            val ref=db!!.collection("pairs").document(pairId).collection("memos").document(memo.id)
+            if(clean.isEmpty())ref.delete().await() else ref.update("text",clean).await()
+        }
+        memos=if(clean.isEmpty())memos.filterNot {it.id==memo.id}
+            else memos.map {if(it.id==memo.id)it.copy(text=clean) else it}
+        memoStatus=if(clean.isEmpty())"메모를 삭제했어요." else "메모를 저장했어요."
         onSaved()
     }
     fun reactToMemo(memo:DailyMemo,emoji:String)=work {
         require(uid.isNotBlank()&&pairId.isNotBlank())
-        val current=memos.firstOrNull {it.ownerId==memo.ownerId&&it.date==memo.date}
-            ?:error("메모가 삭제됐어요.")
+        val current=memos.firstOrNull {it.id==memo.id}?:error("메모가 삭제됐어요.")
         val updated=current.reactedBy(uid,emoji)
-        if(!demo) db!!.collection("pairs").document(pairId).collection("memos").document(memo.ownerId+"_"+memo.date)
+        if(!demo) db!!.collection("pairs").document(pairId).collection("memos").document(memo.id)
             .update(com.google.firebase.firestore.FieldPath.of("reactions",uid),
                 updated.reactions[uid]?:com.google.firebase.firestore.FieldValue.delete()).await()
-        memos=memos.map {if(it.ownerId==memo.ownerId&&it.date==memo.date)it.copy(reactions=updated.reactions) else it}
+        memos=memos.map {if(it.id==memo.id)it.copy(reactions=updated.reactions) else it}
     }
     fun saveProfile(name:String,bio:String,resolve:String,gender:ProfileGender?=profiles[uid]?.gender,emojiStyle:Int=profiles[uid]?.emojiStyle?:0,onSaved:()->Unit={})=work {
         require(name.trim().length in 1..20&&bio.length<=200&&resolve.length<=200&&emojiStyle in MemberEmojiStyles.indices)
