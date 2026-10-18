@@ -170,3 +170,11 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - 오늘·기록의 공통 메모 카드에서 날짜를 상단의 작은 색상 라벨로 분리. 본문은 별도 줄에 14sp/22sp로 표시.
 - 카드 모서리 14dp, 내부 여백 14dp, 요소 간격 10dp로 정리. 복사·수정·반응 메뉴 유지.
 - assembleDebug, testDebugUnitTest, lintDebug 성공. 실기기 화면 육안 검증 미실시.
+
+## 상대방 메모란 작성과 작성자 표시 (2026-10-18)
+
+- 상대방 메모란의 고정 메뉴 안내 문구 삭제. 선택한 사람의 메모란에 새 글 작성 가능.
+- ownerId는 실제 작성자, targetId는 글을 남긴 메모란 주인으로 저장. 기존 문서는 targetId가 없으면 ownerId로 표시. 오늘·기록 모두 targetId로 분류.
+- 상대방 메모란에 남긴 글에는 작성자 이름 표시. 개별 수정은 실제 작성자 기준 유지. 초안·재시도 ID도 대상 메모란별 분리, 본인 기존 초안 키 유지.
+- assembleDebug, testDebugUnitTest, lintDebug 성공. 단위 테스트 38/38 통과. 기존 메모 기본 대상 및 상대 메모란 글 수정·반응 후 작성자/대상 유지 확인.
+- 실기기 터치 및 운영 Firestore 검증 미실시. Firestore 규칙 변경 없음.
