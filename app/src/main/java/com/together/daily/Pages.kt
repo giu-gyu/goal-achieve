@@ -230,7 +230,7 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
                 Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
                     Row(Modifier.weight(3f).fillMaxHeight().background(goal.typeBackground).border(.5.dp,palette.border).padding(4.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(3.dp)) {
                         Text(goal.title,fontSize=12.sp,lineHeight=15.sp,color=Ink,modifier=Modifier.weight(1f))
-                        goal.weeklyTarget.let {
+                        if(goal.weeklyTarget!=7) {
                             Surface(color=Color.White.copy(alpha=.8f),shape=RoundedCornerShape(5.dp),border=androidx.compose.foundation.BorderStroke(.5.dp,goal.typeAccent.copy(alpha=.3f))) {
                                 Text(goal.frequencyLabel,fontSize=8.sp,color=goal.typeAccent,modifier=Modifier.padding(horizontal=3.dp,vertical=2.dp),maxLines=1)
                             }
