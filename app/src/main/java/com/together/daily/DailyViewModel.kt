@@ -118,7 +118,7 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
             if(snapshot?.metadata?.hasPendingWrites()==true) return@addSnapshotListener
             memos=snapshot?.documents?.mapNotNull {doc -> runCatching {
                 DailyMemo(doc.getString("ownerId")!!,LocalDate.parse(doc.getString("date")),doc.getString("text")!!,
-                    memoReactions(doc.get("reactions")),doc.id,doc.getLong("createdAt")?:0)
+                    memoReactions(doc.get("reactions")),doc.id,doc.getLong("createdAt")?:0,doc.getString("targetId")?:doc.getString("ownerId")!!)
             }.getOrNull()}.orEmpty()
 
         }
@@ -145,12 +145,13 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     private val memoDraftStore = application.getSharedPreferences("memo_drafts", android.content.Context.MODE_PRIVATE)
-    fun memoDraft(date:LocalDate):String? = memoDraftStore.getString(uid+"_"+date,null)
-    fun editMemoDraft(date:LocalDate,text:String) {
-        memoDraftStore.edit().putString(uid+"_"+date,text).apply()
+    private fun memoDraftKey(date:LocalDate,targetId:String) = uid+"_"+date+if(targetId==uid)"" else "_"+targetId
+    fun memoDraft(date:LocalDate,targetId:String=uid):String? = memoDraftStore.getString(memoDraftKey(date,targetId),null)
+    fun editMemoDraft(date:LocalDate,text:String,targetId:String=uid) {
+        memoDraftStore.edit().putString(memoDraftKey(date,targetId),text).apply()
         if(!busy) memoStatus=null
     }
-    fun saveMemo(date:LocalDate,text:String,onSaved:()->Unit = {}) = work(onFailure={ message ->
+    fun saveMemo(date:LocalDate,text:String,targetId:String=uid,onSaved:()->Unit = {}) = work(onFailure={ message ->
         memoStatus = if (message.contains("PERMISSION_DENIED", ignoreCase=true) || message.contains("permission", ignoreCase=true))
             "저장 권한이 거부됐어요. Firebase에 최신 규칙이 게시됐는지 확인해주세요. 입력한 메모는 유지됩니다."
         else "서버 저장을 확인하지 못했어요. 입력한 메모는 보관했습니다. 연결 복구 후 기록을 확인해주세요."
@@ -159,7 +160,8 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         memoStatus = "메모 저장 중…"
         val clean = text.trim()
         require(clean.isNotBlank()) {"메모를 입력해주세요."}
-        val pendingKey=uid+"_"+date+"_pending_id"
+        require(targetId in names) {"메모를 남길 상대를 확인해주세요."}
+        val pendingKey=memoDraftKey(date,targetId)+"_pending_id"
         val pendingTextKey=pendingKey+"_text"
         val id=memoDraftStore.getString(pendingKey,null)?.takeIf {memoDraftStore.getString(pendingTextKey,null)==clean}
             ?:UUID.randomUUID().toString().also {
@@ -169,13 +171,13 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         if (!demo) {
             require(uid.isNotBlank() && pairId.isNotBlank()) { "로그인과 커플 연결을 확인해주세요." }
             db!!.collection("pairs").document(pairId).collection("memos").document(id)
-                .set(mapOf("ownerId" to uid,"date" to date.toString(),"text" to clean,"createdAt" to createdAt),com.google.firebase.firestore.SetOptions.merge()).await()
+                .set(mapOf("ownerId" to uid,"date" to date.toString(),"text" to clean,"createdAt" to createdAt,"targetId" to targetId),com.google.firebase.firestore.SetOptions.merge()).await()
         }
         val reactions=memos.firstOrNull {it.id==id}?.reactions.orEmpty()
-        memos=memos.withMemo(DailyMemo(uid,date,clean,reactions,id,createdAt))
+        memos=memos.withMemo(DailyMemo(uid,date,clean,reactions,id,createdAt,targetId))
         memoStatus = "메모를 저장했어요."
         memoDraftStore.edit().remove(pendingKey).remove(pendingTextKey).apply()
-        if(memoDraft(date)==text) memoDraftStore.edit().remove(uid+"_"+date).apply()
+        if(memoDraft(date,targetId)==text) memoDraftStore.edit().remove(memoDraftKey(date,targetId)).apply()
         onSaved()
     }
     fun updateMemo(memo:DailyMemo,text:String,onSaved:()->Unit={}) = work(onFailure={memoStatus="메모를 수정하지 못했어요. 입력한 내용은 유지됩니다."}) {

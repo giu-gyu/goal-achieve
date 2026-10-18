@@ -218,31 +218,23 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,currentDate:LocalDate,on
             })
         })}
     key(vm.uid,id,today.toString()) {
-    if(id==vm.uid) {
-        var draft by rememberSaveable {mutableStateOf(vm.memoDraft(today).orEmpty())}
+    if(id.isNotBlank()) {
+        var draft by rememberSaveable {mutableStateOf(vm.memoDraft(today,id).orEmpty())}
         Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
-            Text(if(today==currentDate)"오늘 메모" else "선택한 날짜의 메모",fontSize=14.sp,fontWeight=FontWeight.SemiBold)
-            OutlinedTextField(draft,{if(it.length<=2000) {draft=it;vm.editMemoDraft(today,it)}},placeholder={Text("이 날의 메모")},minLines=2,maxLines=5,modifier=Modifier.fillMaxWidth())
+            Text((if(id==vm.uid)"" else vm.names[id].orEmpty()+"의 ")+(if(today==currentDate)"오늘 메모" else "선택한 날짜의 메모"),fontSize=14.sp,fontWeight=FontWeight.SemiBold)
+            OutlinedTextField(draft,{if(it.length<=2000) {draft=it;vm.editMemoDraft(today,it,id)}},placeholder={Text("이 날의 메모")},minLines=2,maxLines=5,modifier=Modifier.fillMaxWidth())
             TextButton(onClick={
                 val submitted=draft
-                vm.saveMemo(today,submitted,onSaved={
+                vm.saveMemo(today,submitted,targetId=id,onSaved={
                     if(draft==submitted) draft=""
                     onMemoSaved("메모를 저장했어요")
                 })
             },enabled=!vm.busy&&draft.isNotBlank(),modifier=Modifier.align(Alignment.End)) {Text("메모 저장")}
             vm.memoStatus?.takeUnless {it=="메모를 저장했어요."||it=="메모를 삭제했어요."}?.let {Text(it,fontSize=12.sp,color=Muted)}
         }
-    } else {
-        Column(verticalArrangement=Arrangement.spacedBy(6.dp)) {
-            Text("${vm.names[id].orEmpty().ifBlank {"짝꿍"}}의 ${if(today==currentDate)"오늘 메모" else "선택한 날짜의 메모"}",fontSize=14.sp,fontWeight=FontWeight.SemiBold)
-            Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp),color=Color.White,
-                border=androidx.compose.foundation.BorderStroke(1.dp,Line)) {
-                Text("메모를 길게 누르면 메뉴를 열 수 있어요.",modifier=Modifier.padding(12.dp),fontSize=13.sp,lineHeight=20.sp,color=Muted)
-            }
-        }
     }
     }
-    vm.memos.filter {it.ownerId==id&&it.date==today}.sortedWith(compareBy<DailyMemo> {it.createdAt}.thenBy {it.id}).forEach {memo ->
+    vm.memos.filter {it.targetId==id&&it.date==today}.sortedWith(compareBy<DailyMemo> {it.createdAt}.thenBy {it.id}).forEach {memo ->
         key(memo.id) {MemoCard(vm,memo)}
     }
 

@@ -116,7 +116,7 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
             Column(Modifier.padding(horizontal=12.dp,vertical=8.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
                 WeeklyRecords(vm,member.key,vm.memberLabel(member.key),start,end,today)
                 val memos=vm.memos.filter {
-                    it.ownerId==member.key&&it.date>=start&&it.date<=end&&it.text.isNotBlank()
+                    it.targetId==member.key&&it.date>=start&&it.date<=end&&it.text.isNotBlank()
                 }.sortedWith(compareBy<DailyMemo> {it.date}.thenBy {it.createdAt}.thenBy {it.id})
                 if(memos.isNotEmpty()) {
                     Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
@@ -168,6 +168,7 @@ internal fun MemoCard(vm:DailyViewModel,memo:DailyMemo) {
                     fontSize=10.sp,fontWeight=FontWeight.SemiBold,color=palette.accent,
                     modifier=Modifier.padding(horizontal=8.dp,vertical=4.dp))
             }
+            if(memo.ownerId!=memo.targetId) Text("작성자 · "+vm.names[memo.ownerId].orEmpty().ifBlank {"알 수 없음"},fontSize=11.sp,color=Muted,fontWeight=FontWeight.Medium)
             Text(memo.text,fontSize=14.sp,lineHeight=22.sp,color=Ink)
             if(memo.reactions.isNotEmpty()) Row(horizontalArrangement=Arrangement.spacedBy(5.dp)) {
                 memo.reactions.values.flatten().groupingBy {it}.eachCount().forEach {(emoji,count) ->

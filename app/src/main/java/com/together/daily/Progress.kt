@@ -54,7 +54,7 @@ fun achievementCutoff(goals:List<Goal>,entries:List<Entry>,today:LocalDate):Loca
 fun weekStart(date: LocalDate): LocalDate = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 
 val MemoReactionEmojis=listOf("❤️","👍","👏","🥰","🔥","😂")
-data class DailyMemo(val ownerId:String,val date:LocalDate,val text:String,val reactions:Map<String,List<String>> = emptyMap(),val id:String=ownerId+"_"+date,val createdAt:Long=0) {
+data class DailyMemo(val ownerId:String,val date:LocalDate,val text:String,val reactions:Map<String,List<String>> = emptyMap(),val id:String=ownerId+"_"+date,val createdAt:Long=0,val targetId:String=ownerId) {
     fun reactedBy(memberId:String,emoji:String):DailyMemo {
         require(memberId.isNotBlank()&&emoji in MemoReactionEmojis)
         val current=reactions[memberId].orEmpty()

@@ -18,4 +18,15 @@ class MultipleMemoTest {
         assertEquals(listOf(first,second.copy(text="수정")),updated)
         assertEquals(updated,updated.withMemo(updated.last()))
     }
+    @Test fun partnerBoardKeepsActualAuthorWhenEdited() {
+        val memo=DailyMemo("me",date,"응원해",id="note",targetId="partner")
+        val edited=memo.copy(text="오늘도 응원해")
+        assertEquals("me",edited.ownerId)
+        assertEquals("partner",edited.targetId)
+        assertEquals("note",edited.id)
+        assertEquals("partner",edited.reactedBy("partner","❤️").targetId)
+    }
+    @Test fun existingMemosDefaultToAuthorsBoard() {
+        assertEquals("me",DailyMemo("me",date,"기존 메모").targetId)
+    }
 }
