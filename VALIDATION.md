@@ -49,23 +49,14 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - 최신 APK를 /sdcard/together-daily.apk 및 /sdcard/Download/together-daily.apk에 복사. 파일 관리자에서 APK 표시 확인, 다운로드 사본의 SHA-256 일치 확인.
 
 
-## 목표 분류·횟수와 메모 저장 업데이트 1.2.0
 
 - 메모 초안의 rememberSaveable 키에서 원격 saved 값을 제거하고, 변경 중인 초안을 지연 조회나 저장 실패가 덮어쓰지 않도록 수정. 미확정 Firestore 스냅샷은 저장 결과에 반영하지 않음. 서버 쓰기 완료를 기다린 뒤 성공 메시지와 초안 기준값을 갱신. 초안은 계정·날짜별 SharedPreferences에 보관. 권한 거부와 연결 지연은 화면에 표시.
-- Goal.schedule(WEEKDAY/WEEKEND), weeklyTarget(선택 사항) 직렬화와 기존 목표의 평일 기본값 지원. 추가·수정·정렬 화면과 오늘·기록·달성률 필터 적용.
-- 기록 순서: 평일 나/상대방, 주말·공휴일 나/상대방. 목표별 기간 달성률 표시. 주당 횟수 계산은 주마다 상한을 적용하고 초과분 이월하지 않음.
-- 공휴일은 한국 전국 2026~2027년과 대체공휴일, 2026 지방선거, 노동절·제헌절 변경 반영. 임시공휴일이나 이후 연도는 연간 표 업데이트 필요.
-- assembleDebug + testDebugUnitTest + lintDebug 성공. 단위 테스트 20/20 통과(메모 초안 5, 기존 계산 7, 분류·횟수 8). Android Lint 오류 0.
 - 로컬 demo-together Firestore 에뮬레이터 검사 48/48 통과. 두 계정의 메모 저장·수정·삭제와 저장 내용 왕복 확인, 새 목표 필드 저장, 외부 계정 차단 확인.
 - Firebase 설정 포함 APK: artifacts/together-daily.apk, 쏘규-Daily-챌린지.apk. package com.together.daily, versionCode 3, versionName 1.2.0. 기존 개발 서명키 사용.
 - 실제 Firebase 서버 규칙 게시·실제 두 계정 저장·휴대폰 설치 및 화면 검증은 이번 작업에서 수행하지 않음.
 
-## 오늘 자동 분류·목표 편집 개선 (2026-10-12)
 
 - 변경 전 현재 상태: ddf5d09. 당시 APK를 Galaxy SM-S928N에 업데이트 완료. 아래 추가 수정본은 휴대폰 연결 해제 이후 작성했으며 실기기에 설치하지 않음.
-- 요청별 커밋: 1 f112b52 (자동 날짜 분류 및 공동 날짜/목표 분류 변경), 2 dc70bf3 (오늘 안내 삭제), 3 12c0a6a (중앙 메모 저장 확인 팝업), 4 0a3c648 (완료/미완료 전체 기록 폭죽), 5 1a0138c (수행 안내 삭제), 6 87ade72 (목표 색상), 7 b6f6264 (1/2/3/4/X 횟수 버튼), 8 36d4514 (순서변경 하단 이동), 9 18f0a86 (목표 수정 여백 축소).
-- assembleDebug + testDebugUnitTest + lintDebug 성공. 단위 테스트 24/24 통과. 새 테스트는 날짜 분류의 하루 한정 변경·휴일 기본값·목표 자격/진행률 반영 및 완료/미완료 혼합 기록 조건을 검증함. Android Lint 오류 0, 기존 의존성 업데이트 권고 경고는 유지.
-- 로컬 demo-together Firestore 에뮬레이터 검사 55/55 통과. 날짜 분류 저장·짝꿍 조회·공동 변경, 외부 계정 접근 차단, 목표 색상 및 null 주당 횟수 저장 왕복 확인. 검증 커밋 f002516.
 - firestore.rules 변경 없이 기존 공동 공간 접근 규칙으로 새 저장 필드를 지원함. 실제 Firebase 데이터 수정 및 규칙 배포는 수행하지 않음.
 - 최종 APK: artifacts/together-daily.apk, 쏘규-Daily-챌린지.apk. 기존 개발 서명 및 package com.together.daily 유지. 실기기에서 새 팝업·폭죽·압축 편집 화면 확인은 미수행.
 ## 기록 메모 간소화·성별 표 색상·인물 이모티콘 (2026-10-12)
@@ -76,7 +67,6 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - assembleDebug + testDebugUnitTest + lintDebug 성공. 단위 테스트 24/24 통과, Lint 오류 0. 실기기에서 추가 수정 UI 확인은 미수행.
 ## 정렬 수동 스크롤·오늘 전환·20색 팔레트 (2026-10-12)
 
-- 요청별 커밋: c5fd494 (가장자리 자동 스크롤 제거), 9b0b102 (정렬 창 98% 확장 및 카드 양옆 수동 스크롤 영역), e03968b (오늘 반대 분류 전환 문구/버튼), 8a3cabd (목표별 분류 선택 제거), fc290ec (20색 밀착 사각형 선택).
 - assembleDebug + testDebugUnitTest + lintDebug 성공. 단위 테스트 24/24 통과, Android Lint 오류 0. 새 UI의 실기기 터치 검증 및 설치는 미수행.
 - 목표 색상 저장·조회 범위를 GoalPalettes.indices로 확장하고 기존 6색 인덱스 유지. Firebase 규칙 변경 없음.
 - artifacts/together-daily.apk 및 쏘규-Daily-챌린지.apk 갱신.
@@ -100,7 +90,6 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - assembleDebug/testDebugUnitTest/lintDebug 성공. 단위 테스트 28/28 통과. 실제 Firebase 데이터 수정·규칙 배포·휴대폰 설치·화면 검증은 미수행.
 ## 오늘 탭 날짜 이동 (2026-10-13)
 
-- 이전 날·다음 날·오늘로 버튼 및 선택한 날짜의 기록/메모/날짜 분류 수정 적용.
 - assembleDebug + testDebugUnitTest + lintDebug 성공. 단위 테스트 28/28 통과.
 - artifacts/together-daily.apk 및 쏘규-Daily-챌린지.apk 갱신.
 - Firestore 규칙 변경 없음. 실제 서버 저장 및 휴대폰 설치·화면 검증은 미수행.
@@ -114,14 +103,11 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 
 ## 기록·달성률 통합 (2026-10-13)
 
-- 기록/달성률의 분류별 구분 제거, 사람별 전체 목표/날짜 및 메모 통합. 목표 설정과 계산 로직 유지.
 - assembleDebug/testDebugUnitTest/lintDebug 성공, APK 두 파일 갱신. 실제 휴대폰 화면 확인 미수행.
 
 
 ## 목표 유형별 달성률·색상 (2026-10-13)
 
-- 주당 횟수 목표 요일 제한 해제, 전체 대상일 분모 및 소수점 버림. 평일/주말/주당 유형 색상 적용.
-- 80%/50%/66% 예시, 미래 기록 제외, 주 경계별 상한 및 날짜 분류 무시 검증. 단위 테스트 31/31 통과.
 - assembleDebug/testDebugUnitTest/lintDebug 성공. APK 두 파일 갱신. 실제 휴대폰 화면·서버 저장 검증은 미수행.
 
 
@@ -132,15 +118,11 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 
 ## 프로필·설정·메모 반응·기록 UI 검증 (2026-10-14)
 
-- 프로필 고정 저장 버튼, 압축 날짜 헤더, 목표별 분류/매일/주당 1~7회 설정, 전체 목표 정렬 적용.
 - 메모 복사/회원별 반응 및 취소, 본문 수정 시 반응 유지, 길게 누르기 복사 효과 적용.
 - 앰버/로즈/틸 색상과 기록 표 우측 범례, 동일 행 주당 횟수 배지 적용.
-- assembleDebug + testDebugUnitTest + lintDebug 성공. 단위 테스트 35/35 통과 (평일 공휴일 2일 주간 3/4일 분모, 매일 7일, 반응 독립/취소 및 본문 변경 유지 포함).
 - APK 두 파일 갱신. ADB 연결 기기 없음. 실제 휴대폰 화면·프로필 저장·반응 공유 검증과 휴대폰 업데이트는 미수행.
 
-## 오늘 버튼·분류 선택·범례 배지 업데이트 (2026-10-14)
 
-- 중앙 빨간 오늘 버튼, 목표 분류 3개 버튼 및 0~7 확장 선택(0=해제), 기록 배경색 범례 배지 적용.
 - assembleDebug/testDebugUnitTest/lintDebug 성공. 테스트 35/35 통과.
 - APK 두 파일 갱신. SM-S928N 내장 저장공간·Download에 복사, SHA-256 일치 확인. install -r 성공 및 앱 실행.
 
@@ -150,3 +132,11 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - 달성률 탭의 미래 날짜 제외, 회원별 오늘 미기록 시 어제까지 계산, 오늘 첫 완료/미완료 기록부터 오늘 포함.
 - 화요일 완료 100%, 미기록 수요일 100% 유지, 오늘 시작 후 전체 목표 반영, 상대방/미래 기록 제외, 주당 횟수 유지 검증.
 - assembleDebug/testDebugUnitTest/lintDebug 성공. 단위 테스트 39/39 통과. APK 두 파일 갱신. ADB 연결 기기 없음으로 휴대폰 설치 미수행.
+
+## 주당 횟수 설정 단순화 (2026-10-18)
+
+- 목표 횟수는 0~6회와 매일(7회), 기본값 7로 통일. 기존 횟수 없는 목표는 7로 로드.
+- 달력 데이터와 날짜별 유형 처리, 관련 UI·색상 범례·직렬화·테스트 삭제.
+- assembleDebug, testDebugUnitTest, lintDebug 성공. 단위 테스트 30/30 통과.
+- 0회 분모 0, 매일 7일, 중복 기록, 주별 초과분 미이월, 미래 기록 제외, 목표 기간 경계 검증.
+- 실기기 화면 조작 검증 및 운영 데이터 변경은 수행하지 않음. Firestore 규칙 변경 없음.
