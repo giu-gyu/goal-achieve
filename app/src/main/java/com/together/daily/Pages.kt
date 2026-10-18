@@ -25,6 +25,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.LocalDate
@@ -213,6 +215,7 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             Text(name,fontSize=13.sp,fontWeight=FontWeight.Bold,color=palette.accent,modifier=Modifier.weight(1f),maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
+        if(goals.any {it.start>start}) Text("회색 — : 목표 생성 전",fontSize=10.sp,color=Muted)
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val tableWidth=if(days.size>7)maxOf(maxWidth,(124+days.size*28).dp)else maxWidth
             Column(if(days.size>7)Modifier.horizontalScroll(rememberScrollState()) else Modifier) {
@@ -244,10 +247,12 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
                     }
                     days.forEach {day ->
                         val done=records[goal.id to day]?.done
+                        val beforeCreation=day<goal.start
                         val applicable=goal.scheduled(day)&&day<=today
-                        val label=if(!applicable||done==null) "" else if(done) "O" else "X"
-                        Box(Modifier.weight(1f).fillMaxHeight().heightIn(min=24.dp).border(.5.dp,palette.border).background(if(day==today)palette.header else palette.cell).weekBoundary(day in weekBoundaries,palette.accent),contentAlignment=Alignment.Center) {
-                            Text(label,fontSize=14.sp,fontWeight=FontWeight.Bold,color=if(done==true)Color(0xFF1565C0) else Color(0xFFC62828))
+                        val label=if(beforeCreation) "—" else if(!applicable||done==null) "" else if(done) "O" else "X"
+                        Box(Modifier.weight(1f).fillMaxHeight().heightIn(min=24.dp).border(.5.dp,palette.border).background(if(beforeCreation)Color(0xFFE7E9EC) else if(day==today)palette.header else palette.cell).weekBoundary(day in weekBoundaries,palette.accent)
+                            .semantics {if(beforeCreation)contentDescription=day.toString()+", 목표 생성 전"},contentAlignment=Alignment.Center) {
+                            Text(label,fontSize=14.sp,fontWeight=FontWeight.Bold,color=if(beforeCreation)Color(0xFF858B94) else if(done==true)Color(0xFF1565C0) else Color(0xFFC62828))
                         }
                     }
                     Box(Modifier.weight(1.25f).fillMaxHeight().border(.5.dp,palette.border),contentAlignment=Alignment.Center) {Text(progress(goal,vm.entries,start,end,today).let {if(it.total==0)"—" else "${it.percent}%"},fontSize=11.sp,fontWeight=FontWeight.Bold)}
