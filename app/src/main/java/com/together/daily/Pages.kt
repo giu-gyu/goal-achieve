@@ -160,10 +160,15 @@ internal fun MemoCard(vm:DailyViewModel,memo:DailyMemo) {
         onLongClickLabel="메모 메뉴",onLongClick={
             haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
             menu=true
-        }),shape=RoundedCornerShape(10.dp),color=if(copied)Peach else Color.White,
+        }),shape=RoundedCornerShape(14.dp),color=if(copied)Peach else Color.White,
         border=androidx.compose.foundation.BorderStroke(1.dp,palette.border)) {
-        Column(Modifier.padding(horizontal=10.dp,vertical=7.dp),verticalArrangement=Arrangement.spacedBy(3.dp)) {
-            Text(memo.date.format(java.time.format.DateTimeFormatter.ofPattern("M/d (E)",java.util.Locale.KOREAN))+"  "+memo.text,fontSize=12.sp,lineHeight=18.sp,color=Ink)
+        Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+            Surface(color=palette.header,shape=RoundedCornerShape(7.dp)) {
+                Text(memo.date.format(java.time.format.DateTimeFormatter.ofPattern("M월 d일 · E요일",java.util.Locale.KOREAN)),
+                    fontSize=10.sp,fontWeight=FontWeight.SemiBold,color=palette.accent,
+                    modifier=Modifier.padding(horizontal=8.dp,vertical=4.dp))
+            }
+            Text(memo.text,fontSize=14.sp,lineHeight=22.sp,color=Ink)
             if(memo.reactions.isNotEmpty()) Row(horizontalArrangement=Arrangement.spacedBy(5.dp)) {
                 memo.reactions.values.flatten().groupingBy {it}.eachCount().forEach {(emoji,count) ->
                     Text(emoji+" "+count,fontSize=11.sp,modifier=Modifier.background(Cream,RoundedCornerShape(6.dp)).padding(horizontal=5.dp,vertical=2.dp))
