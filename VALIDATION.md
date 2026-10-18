@@ -178,3 +178,9 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - 상대방 메모란에 남긴 글에는 작성자 이름 표시. 개별 수정은 실제 작성자 기준 유지. 초안·재시도 ID도 대상 메모란별 분리, 본인 기존 초안 키 유지.
 - assembleDebug, testDebugUnitTest, lintDebug 성공. 단위 테스트 38/38 통과. 기존 메모 기본 대상 및 상대 메모란 글 수정·반응 후 작성자/대상 유지 확인.
 - 실기기 터치 및 운영 Firestore 검증 미실시. Firestore 규칙 변경 없음.
+
+## 목표 생성 전 기록 칸 표시 (2026-10-18)
+
+- 주간·월간 기록 표에서 day < goal.start인 칸에 회색 배경과 — 표시. 생성일 당일부터 기존 O/X·미기록 표시 적용.
+- 해당 칸이 있는 표에는 회색 — : 목표 생성 전 범례 표시. 화면 읽기 설명에도 목표 생성 전 안내 추가.
+- assembleDebug, testDebugUnitTest, lintDebug 성공. 실기기 화면 검증 미실시. 달성률 계산 변경 없음.
