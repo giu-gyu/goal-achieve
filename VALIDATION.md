@@ -159,3 +159,8 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - assembleDebug, testDebugUnitTest, lintDebug 성공. 단위 테스트 36/36 통과.
 - 로컬 Firestore 에뮬레이터 검사 54/54 통과: 같은 날 독립 메모 두 개·반응 배열 저장 왕복·다른 메모 삭제 후 첫 메모 보존·외부 계정 차단 포함. Firestore 규칙 변경 없음.
 - 실기기 화면·터치 동작 및 운영 Firestore 검증은 수행하지 않음. 과거에 덮어써져 사라진 본문 복구는 포함하지 않음.
+
+## 기록 표 매일 배지 숨김 (2026-10-18)
+
+- 주간·월간 기록 표에서 주 7회 목표는 매일 배지를 표시하지 않음. 주 0~6회 목표의 주 X회 배지는 유지.
+- assembleDebug, testDebugUnitTest, lintDebug 성공. 실기기 화면 검증 미실시.
