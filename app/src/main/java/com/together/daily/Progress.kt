@@ -5,18 +5,12 @@ import java.time.DayOfWeek
 import java.time.temporal.TemporalAdjusters
 
 
-enum class GoalSchedule(val label: String) {
-    WEEKDAY("평일"), WEEKEND("주말·공휴일"), ALL("매일");
-    fun includes(date: LocalDate) = this == ALL || (this == WEEKEND) == KoreanHolidays.isRestDay(date)
+data class Goal(val id:String,val ownerId:String,val title:String,val start:LocalDate,val end:LocalDate?=null,val order:Int=Int.MAX_VALUE,val weeklyTarget:Int=7) {
+    init { require(weeklyTarget in 0..7) }
+    val frequencyLabel get() = if(weeklyTarget==7) "매일" else "주 ${weeklyTarget}회"
+    val typeLabel get() = frequencyLabel
+    fun scheduled(date:LocalDate) = date>=start && (end==null || date<=end)
 }
-
-data class Goal(val id: String, val ownerId: String, val title: String, val start: LocalDate, val end: LocalDate? = null, val order:Int=Int.MAX_VALUE, val schedule:GoalSchedule=GoalSchedule.WEEKDAY, val weeklyTarget:Int?=null, val dateSchedules:Map<LocalDate,GoalSchedule> = emptyMap()) {
-    val frequencyLabel get() = weeklyTarget?.let { "주 ${it}회" } ?: ""
-    val typeLabel get() = weeklyTarget?.let { "주 ${it}회" } ?: schedule.label
-    fun scheduled(date: LocalDate) = date >= start && (end == null || date <= end) && (weeklyTarget != null || schedule == GoalSchedule.ALL || schedule == scheduleForDate(date,dateSchedules))
-}
-fun scheduleForDate(date:LocalDate,overrides:Map<LocalDate,GoalSchedule> = emptyMap()):GoalSchedule =
-    overrides[date] ?: if(KoreanHolidays.isRestDay(date)) GoalSchedule.WEEKEND else GoalSchedule.WEEKDAY
 
 data class Entry(val goalId: String, val date: LocalDate, val done: Boolean)
 data class Progress(val done: Int, val missed: Int, val unrecorded: Int) {
@@ -34,7 +28,7 @@ fun progress(goal: Goal, entries: List<Entry>, start: LocalDate, end: LocalDate,
         if (goal.scheduled(date)) when (records[date]?.done) { true -> done++; false -> missed++; null -> blank++ }
         date = date.plusDays(1)
     }
-    goal.weeklyTarget?.let { target ->
+    goal.weeklyTarget.takeIf {it!=7}?.let { target ->
         var week = weekStart(from)
         var completed = 0; var required = 0; var failed = 0
         while (week <= minOf(until,today)) {

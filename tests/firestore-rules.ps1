@@ -109,27 +109,11 @@ Check 'outsider cannot delete goal' 'mallory' 'DELETE' "$taskBase/pairs/$taskPai
 Check 'signed out cannot write memo' '' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/memos/alice_$today" $memo))} 403
 Check 'partner deletes profile' 'bob' 'DELETE' "$taskBase/pairs/$taskPair/profiles/alice" $null 200
 Check 'outsider cannot delete pair' 'mallory' 'DELETE' "$taskBase/pairs/$taskPair" $null 403
-Check 'weekday frequency goal schema allowed' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/weekday-target" @{ownerId='alice';title='Read';start=$today;end=$null;order=0;schedule='WEEKDAY';weeklyTarget=2}))} 200
-Check 'weekend frequency goal schema allowed' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/weekend-target" @{ownerId='bob';title='Walk';start=$today;end=$null;order=0;schedule='WEEKEND';weeklyTarget=3}))} 200
 Check 'memo updated text roundtrip write' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/memos/alice_$today" @{ownerId='alice';date=$today;text='Updated memo'}))} 200
 $taskSavedMemo = Invoke-RestMethod -Uri "$taskBase/pairs/$taskPair/memos/alice_$today" -Headers @{Authorization='Bearer '+(Token 'bob')}
 if($taskSavedMemo.fields.text.stringValue -ne 'Updated memo') {throw 'Saved memo text did not persist'}
 Check 'owner clears memo' 'alice' 'DELETE' "$taskBase/pairs/$taskPair/memos/alice_$today" $null 200
 Check 'cleared memo no longer exists' 'bob' 'GET' "$taskBase/pairs/$taskPair/memos/alice_$today" $null 404
-$daySchedule=@{ownerId='alice';schedule='WEEKEND'}
-Check 'member saves date override' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/daySchedules/$today" $daySchedule))} 200
-Check 'partner reads date override' 'bob' 'GET' "$taskBase/pairs/$taskPair/daySchedules/$today" $null 200
-$taskSavedDay=Invoke-RestMethod -Uri "$taskBase/pairs/$taskPair/daySchedules/$today" -Headers @{Authorization='Bearer '+(Token 'bob')}
-if($taskSavedDay.fields.schedule.stringValue -ne 'WEEKEND') {throw 'Date override did not persist'}
-$daySchedule.schedule='WEEKDAY'
-Check 'partner changes shared date override' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/daySchedules/$today" $daySchedule))} 200
-Check 'outsider cannot write date override' 'mallory' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/daySchedules/$today" $daySchedule))} 403
-Check 'outsider cannot read date override' 'mallory' 'GET' "$taskBase/pairs/$taskPair/daySchedules/$today" $null 403
-$colorGoal=@{ownerId='alice';title='Color goal';start=$today;end=$null;order=0;schedule='WEEKDAY';weeklyTarget=$null;colorIndex=3}
-Check 'member saves colored goal with disabled frequency' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/color" $colorGoal))} 200
-$taskSavedColor=Invoke-RestMethod -Uri "$taskBase/pairs/$taskPair/goals/color" -Headers @{Authorization='Bearer '+(Token 'bob')}
-if($taskSavedColor.fields.colorIndex.integerValue -ne '3' -or -not ($taskSavedColor.fields.weeklyTarget.PSObject.Properties.Name -contains 'nullValue')) {throw 'Goal color or disabled frequency did not persist'}
-Check 'outsider cannot change goal color' 'mallory' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/goals/color" $colorGoal))} 403
 Check 'member saves male emoji profile' 'alice' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/profiles/alice" @{bio='Hello';resolve='Every day';gender='MALE';emojiStyle=4}))} 200
 Check 'partner saves female emoji profile' 'bob' 'POST' $commit @{writes=@((WriteDoc "pairs/$taskPair/profiles/bob" @{bio='Hi';resolve='Keep going';gender='FEMALE';emojiStyle=4}))} 200
 $taskMale=Invoke-RestMethod -Uri "$taskBase/pairs/$taskPair/profiles/alice" -Headers @{Authorization='Bearer '+(Token 'bob')}

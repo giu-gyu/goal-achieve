@@ -30,8 +30,6 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
     var pairId by mutableStateOf(""); private set
     var names by mutableStateOf<Map<String, String>>(emptyMap()); private set
     var goals by mutableStateOf<List<Goal>>(emptyList()); private set
-    var dateSchedules by mutableStateOf<Map<LocalDate,GoalSchedule>>(emptyMap()); private set
-    fun scheduleFor(date:LocalDate)=scheduleForDate(date,dateSchedules)
     fun memberLabel(id:String)="${names[id].orEmpty()} ${memberEmoji(profiles[id]?:MemberProfile())}"
     var entries by mutableStateOf<List<Entry>>(emptyList()); private set
     var memos by mutableStateOf<List<DailyMemo>>(emptyList()); private set
@@ -124,20 +122,12 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
             if(e!=null) {error="프로필을 불러오지 못했습니다. Firebase 규칙을 확인하세요.";return@addSnapshotListener}
             profiles=snapshot?.documents?.associate {it.id to MemberProfile(it.getString("bio").orEmpty(),it.getString("resolve").orEmpty(),it.getString("gender")?.let {value->runCatching {ProfileGender.valueOf(value)}.getOrNull()},it.getLong("emojiStyle")?.toInt()?.takeIf {index->index in MemberEmojiStyles.indices}?:0)}.orEmpty()
         }
-        listeners += pair.collection("daySchedules").addSnapshotListener {snapshot,e ->
-            if(e!=null) {error="날짜 분류를 불러오지 못했어요.";return@addSnapshotListener}
-            dateSchedules=snapshot?.documents?.mapNotNull {doc -> runCatching {
-                LocalDate.parse(doc.id) to GoalSchedule.valueOf(doc.getString("schedule")!!)
-            }.getOrNull() }?.toMap().orEmpty()
-            goals=goals.map {it.copy(dateSchedules=dateSchedules)}
-        }
         listeners += pair.collection("goals").addSnapshotListener { snapshot, e ->
             if (e != null) { error = "목표를 불러오지 못했어요. 연결을 확인해주세요."; return@addSnapshotListener }
             goals = snapshot?.documents?.mapNotNull { doc ->
                 runCatching { Goal(doc.id, doc.getString("ownerId")!!, doc.getString("title")!!,
                     LocalDate.parse(doc.getString("start")), doc.getString("end")?.let { LocalDate.parse(it) },doc.getLong("order")?.toInt()?:Int.MAX_VALUE,
-                    doc.getString("schedule")?.let { runCatching { GoalSchedule.valueOf(it) }.getOrNull() } ?: GoalSchedule.WEEKDAY,
-                    doc.getLong("weeklyTarget")?.toInt()?.takeIf { it in 1..7 },dateSchedules=dateSchedules) }.getOrNull()
+                    doc.getLong("weeklyTarget")?.toInt()?.takeIf {it in 0..7} ?: 7) }.getOrNull()
             }?.sortedWith(compareBy<Goal> { it.order }.thenBy { it.start }.thenBy { it.title }).orEmpty()
 
         }
@@ -187,13 +177,6 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
                 updated.reactions[uid]?:com.google.firebase.firestore.FieldValue.delete()).await()
         memos=memos.map {if(it.ownerId==memo.ownerId&&it.date==memo.date)it.copy(reactions=updated.reactions) else it}
     }
-    fun setDaySchedule(date:LocalDate,schedule:GoalSchedule)=work {
-
-        if(!demo) db!!.collection("pairs").document(pairId).collection("daySchedules").document(date.toString())
-            .set(mapOf("schedule" to schedule.name,"ownerId" to uid)).await()
-        dateSchedules=dateSchedules+(date to schedule)
-        goals=goals.map {it.copy(dateSchedules=dateSchedules)}
-    }
     fun saveProfile(name:String,bio:String,resolve:String,gender:ProfileGender?=profiles[uid]?.gender,emojiStyle:Int=profiles[uid]?.emojiStyle?:0,onSaved:()->Unit={})=work {
         require(name.trim().length in 1..20&&bio.length<=200&&resolve.length<=200&&emojiStyle in MemberEmojiStyles.indices)
         if(demo) {names=names+(uid to name.trim());profiles=profiles+(uid to MemberProfile(bio.trim(),resolve.trim(),gender,emojiStyle));onSaved();return@work}
@@ -206,20 +189,20 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         profiles=profiles+(uid to MemberProfile(bio.trim(),resolve.trim(),gender,emojiStyle))
         onSaved()
     }
-    fun addGoal(title:String,position:Int?=null,schedule:GoalSchedule=GoalSchedule.ALL,weeklyTarget:Int?=null,onSaved:()->Unit={})=work {
+    fun addGoal(title:String,position:Int?=null,weeklyTarget:Int=7,onSaved:()->Unit={})=work {
         require(title.trim().length in 1..60) {"목표는 1~60자로 입력해주세요."}
-        require(weeklyTarget==null || weeklyTarget in 1..7) { "주당 횟수는 1~7회로 설정해주세요." }
+        require(weeklyTarget in 0..7) { "주당 횟수는 0~7회로 설정해주세요." }
         val own=goals.filter {it.ownerId==uid}.toMutableList()
         require(goals.count {it.ownerId==uid}<450) {"목표는 최대 450개까지 등록할 수 있습니다."}
         val index=(position?:own.size).coerceIn(0,own.size)
         val ref=if(demo)null else db!!.collection("pairs").document(pairId).collection("goals").document()
-        val new=Goal(ref?.id?:UUID.randomUUID().toString(),uid,title.trim(),koreaToday(),schedule=schedule,weeklyTarget=weeklyTarget,dateSchedules=dateSchedules)
+        val new=Goal(ref?.id?:UUID.randomUUID().toString(),uid,title.trim(),koreaToday(),weeklyTarget=weeklyTarget)
         own.add(index,new)
         val ordered=own.mapIndexed {i,g->g.copy(order=i)}
         if(demo) {goals=goals.filterNot {it.ownerId==uid}+ordered;onSaved();return@work}
         val batch=db!!.batch()
         ordered.forEach {g ->
-            if(g.id==new.id)batch.set(ref!!,mapOf("ownerId" to uid,"title" to g.title,"start" to g.start.toString(),"end" to null,"order" to g.order,"schedule" to g.schedule.name,"weeklyTarget" to g.weeklyTarget))
+            if(g.id==new.id)batch.set(ref!!,mapOf("ownerId" to uid,"title" to g.title,"start" to g.start.toString(),"end" to null,"order" to g.order,"weeklyTarget" to g.weeklyTarget))
             else batch.update(ref!!.parent.document(g.id),"order",g.order)
         }
         batch.commit().await()
@@ -227,7 +210,6 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
     }
     fun moveGoal(goal:Goal,direction:Int)=work {
         require(goal.ownerId==uid&&direction in listOf(-1,1))
-        val schedule=goal.schedule
         val own=goals.filter {it.ownerId==uid}.toMutableList()
         require(own.size<=450)
         val index=own.indexOfFirst {it.id==goal.id}
@@ -265,21 +247,12 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         db!!.collection("pairs").document(pairId).collection("goals").document(goal.id)
             .update("title", title.trim()).await()
     }
-    fun updateGoal(goal:Goal,title:String,schedule:GoalSchedule,weeklyTarget:Int?)=work {
+    fun updateGoal(goal:Goal,title:String,weeklyTarget:Int)=work {
         require(goal.ownerId==uid&&title.trim().length in 1..60)
-        require(weeklyTarget==null||weeklyTarget in 1..7)
+        require(weeklyTarget in 0..7)
         if(!demo) db!!.collection("pairs").document(pairId).collection("goals").document(goal.id)
-            .update(mapOf("title" to title.trim(),"schedule" to schedule.name,"weeklyTarget" to weeklyTarget)).await()
-        goals=goals.map {if(it.id==goal.id)it.copy(title=title.trim(),schedule=schedule,weeklyTarget=weeklyTarget) else it}
-    }
-    fun configureGoal(goal:Goal,schedule:GoalSchedule,weeklyTarget:Int?) = work {
-        require(goal.ownerId==uid && (weeklyTarget==null || weeklyTarget in 1..7))
-        if(demo) {
-            goals=goals.map {if(it.id==goal.id) it.copy(schedule=schedule,weeklyTarget=weeklyTarget) else it}
-        } else {
-            db!!.collection("pairs").document(pairId).collection("goals").document(goal.id)
-                .update(mapOf("schedule" to schedule.name,"weeklyTarget" to weeklyTarget)).await()
-        }
+            .update(mapOf("title" to title.trim(),"weeklyTarget" to weeklyTarget)).await()
+        goals=goals.map {if(it.id==goal.id)it.copy(title=title.trim(),weeklyTarget=weeklyTarget) else it}
     }
     fun deleteGoal(goal: Goal) = work {
         require(goal.ownerId == uid)
@@ -321,10 +294,10 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         if (busy) return
         listeners.forEach { it.remove() }; listeners.clear()
         auth?.signOut(); demo = false; uid = ""; pairId = ""; names = emptyMap(); goals = emptyList(); entries = emptyList()
-        dateSchedules=emptyMap(); ready = false; offline = false; error = null; memoStatus = null; memos=emptyList();profiles=emptyMap()
+        ready = false; offline = false; error = null; memoStatus = null; memos=emptyList();profiles=emptyMap()
     }
     fun startDemo() {
-        dateSchedules=emptyMap(); demo = true; uid = "me"; pairId = "demo"; ready = true
+        demo = true; uid = "me"; pairId = "demo"; ready = true
         names = mapOf("me" to "나", "partner" to "짝꿍")
         val start = koreaToday().minusDays(20)
         goals = listOf(Goal("walk", uid, "30분 걷기", start),

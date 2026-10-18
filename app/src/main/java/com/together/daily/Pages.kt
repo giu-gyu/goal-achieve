@@ -127,7 +127,6 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
         }
         Spacer(Modifier.height(2.dp))
     }
-    if(start.year<KoreanHolidays.FIRST_SUPPORTED_YEAR || end.year>KoreanHolidays.LAST_SUPPORTED_YEAR) Text("이 연도의 설·추석·대체공휴일은 아직 반영되지 않았어요. 공휴일 데이터 업데이트가 필요합니다.",fontSize=11.sp,color=Muted)
     if(members.size<2) Text("상대방이 연결되면 주간 기록이 여기에 표시됩니다.",color=Muted,fontSize=12.sp)
     }
 }
@@ -197,17 +196,6 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)) {
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             Text(name,fontSize=13.sp,fontWeight=FontWeight.Bold,color=palette.accent,modifier=Modifier.weight(1f),maxLines=1,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-            Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
-                listOf(
-                    Triple("평일",Color(0xFF966312),Color(0xFFFBF3DF)),
-                    Triple("주말",Color(0xFFA54F64),Color(0xFFFBEFF1)),
-                    Triple("주당 횟수",Color(0xFF217E78),Color(0xFFEAF6F2))
-                ).forEach {(label,color,background) ->
-                    Surface(color=background,shape=RoundedCornerShape(6.dp),border=androidx.compose.foundation.BorderStroke(.5.dp,color.copy(alpha=.25f))) {
-                        Text(label,color=color,fontSize=9.sp,modifier=Modifier.padding(horizontal=6.dp,vertical=3.dp))
-                    }
-                }
-            }
         }
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val tableWidth=if(days.size>7)maxOf(maxWidth,(124+days.size*28).dp)else maxWidth
@@ -232,9 +220,9 @@ private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:Loc
                 Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
                     Row(Modifier.weight(3f).fillMaxHeight().background(goal.typeBackground).border(.5.dp,palette.border).padding(4.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(3.dp)) {
                         Text(goal.title,fontSize=12.sp,lineHeight=15.sp,color=Ink,modifier=Modifier.weight(1f))
-                        (goal.weeklyTarget?:if(goal.schedule==GoalSchedule.ALL)7 else null)?.let {count ->
+                        goal.weeklyTarget.let {
                             Surface(color=Color.White.copy(alpha=.8f),shape=RoundedCornerShape(5.dp),border=androidx.compose.foundation.BorderStroke(.5.dp,goal.typeAccent.copy(alpha=.3f))) {
-                                Text("주 ${count}회",fontSize=8.sp,color=goal.typeAccent,modifier=Modifier.padding(horizontal=3.dp,vertical=2.dp),maxLines=1)
+                                Text(goal.frequencyLabel,fontSize=8.sp,color=goal.typeAccent,modifier=Modifier.padding(horizontal=3.dp,vertical=2.dp),maxLines=1)
                             }
                         }
                     }

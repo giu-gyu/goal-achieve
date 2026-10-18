@@ -60,7 +60,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun DailyApp(vm: DailyViewModel = viewModel()) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    var goalSchedule by rememberSaveable { mutableStateOf(GoalSchedule.ALL) }
     var adding by remember { mutableStateOf(false) }
     var profileOpen by rememberSaveable {mutableStateOf(false)}
     var editing by rememberSaveable { mutableStateOf(false) }
@@ -140,19 +139,18 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
         }
     }
     if(profileOpen&&vm.pairId.isNotEmpty()) ProfileDialog(vm,onDismiss={profileOpen=false})
-    if(editing) GoalEditor(vm,onAdd={goalSchedule=GoalSchedule.ALL;adding=true},onDismiss={editing=false})
+    if(editing) GoalEditor(vm,onAdd={adding=true},onDismiss={editing=false})
     if(adding) {
         val ownGoals=vm.goals.filter {it.ownerId==vm.uid}
         var position by rememberSaveable {mutableIntStateOf(ownGoals.size)}
         var title by rememberSaveable { mutableStateOf("") }
-        var schedule by rememberSaveable { mutableStateOf(goalSchedule) }
-        var target by rememberSaveable { mutableStateOf<Int?>(null) }
+        var target by rememberSaveable { mutableStateOf(7) }
         AlertDialog(onDismissRequest={adding=false},containerColor=Cream,shape=RoundedCornerShape(28.dp),
             icon={Mark(Symbol.Leaf,color=Sage,modifier=Modifier.size(28.dp))},
             title={Text("목표 추가",fontWeight=FontWeight.Bold,fontSize=22.sp)},
             text={Column(verticalArrangement=Arrangement.spacedBy(14.dp)) {
-                Text("분류와 주당 횟수를 선택하지 않으면 매일 목표예요.",color=Muted,fontSize=14.sp,lineHeight=22.sp)
-                GoalSettings(schedule,target,!vm.busy,onSchedule={schedule=it;target=null},onTarget={target=it})
+                Text("주당 횟수를 선택해주세요. 기본값은 매일이에요.",color=Muted,fontSize=14.sp,lineHeight=22.sp)
+                GoalSettings(target,!vm.busy,onTarget={target=it})
                 OutlinedTextField(title,{if(it.length<=60)title=it},singleLine=true,
                     placeholder={Text("목표 이름",fontSize=13.sp)},shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth())
 
@@ -162,7 +160,7 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
                     TextButton(onClick={position++},enabled=position<ownGoals.size&&!vm.busy){Text("↓")}
                 }
             }},
-            confirmButton={Button(onClick={vm.addGoal(title,position,schedule,target,onSaved={goalSchedule=schedule;adding=false})},enabled=title.isNotBlank()&&!vm.busy,shape=RoundedCornerShape(12.dp)) {Text("추가")}},
+            confirmButton={Button(onClick={vm.addGoal(title,position,target,onSaved={adding=false})},enabled=title.isNotBlank()&&!vm.busy,shape=RoundedCornerShape(12.dp)) {Text("추가")}},
             dismissButton={TextButton(onClick={adding=false}){Text("취소")}})
     }
 
@@ -263,16 +261,15 @@ private fun GoalEditor(vm:DailyViewModel,onAdd:()->Unit,onDismiss:()->Unit) {
                     goals.forEach {goal -> key(goal.id) {
                         var title by rememberSaveable(goal.title) {mutableStateOf(goal.title)}
 
-                        var category by rememberSaveable(goal.schedule) {mutableStateOf(goal.schedule)}
                         var target by rememberSaveable(goal.weeklyTarget) {mutableStateOf(goal.weeklyTarget)}
                         Column(Modifier.fillMaxWidth().background(Color.White,RoundedCornerShape(14.dp))
                             .border(1.dp,Line,RoundedCornerShape(14.dp)).padding(8.dp),verticalArrangement=Arrangement.spacedBy(2.dp)) {
                             OutlinedTextField(title,{if(it.length<=60)title=it},placeholder={Text("목표 이름")},singleLine=true,
                                 enabled=!vm.busy,shape=RoundedCornerShape(10.dp),modifier=Modifier.fillMaxWidth())
-                            GoalSettings(category,target,!vm.busy,onSchedule={category=it;target=null},onTarget={target=it})
+                            GoalSettings(target,!vm.busy,onTarget={target=it})
                             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.End) {
-                                TextButton(onClick={vm.updateGoal(goal,title,category,target)},
-                                    enabled=!vm.busy&&title.isNotBlank()&&(title.trim()!=goal.title||category!=goal.schedule||target!=goal.weeklyTarget),
+                                TextButton(onClick={vm.updateGoal(goal,title,target)},
+                                    enabled=!vm.busy&&title.isNotBlank()&&(title.trim()!=goal.title||target!=goal.weeklyTarget),
                                     contentPadding=PaddingValues(horizontal=10.dp,vertical=0.dp),modifier=Modifier.height(32.dp)) {Text("저장",fontSize=12.sp)}
                                 TextButton(onClick={deleting=goal},enabled=!vm.busy,contentPadding=PaddingValues(horizontal=10.dp,vertical=0.dp),modifier=Modifier.height(32.dp)) {Text("삭제",fontSize=12.sp)}
                             }
@@ -345,36 +342,17 @@ private fun RecordButton(text:String,selected:Boolean,color:Color,bg:Color,symbo
 }
 
 @Composable
-private fun GoalSettings(schedule:GoalSchedule,target:Int?,enabled:Boolean,onSchedule:(GoalSchedule)->Unit,onTarget:(Int?)->Unit) {
-    var expanded by remember {mutableStateOf(false)}
+private fun GoalSettings(target:Int,enabled:Boolean,onTarget:(Int)->Unit) {
     Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
-            listOf(GoalSchedule.WEEKDAY,GoalSchedule.WEEKEND).forEach {value ->
-                val selected=target==null&&!expanded&&schedule==value
-                val sample=Goal("","","",koreaToday(),schedule=value)
-                TextButton(onClick={expanded=false;onSchedule(if(selected)GoalSchedule.ALL else value)},enabled=enabled,
-                    colors=ButtonDefaults.textButtonColors(containerColor=if(selected)sample.typeBackground else Color.White,contentColor=sample.typeAccent),
-                    modifier=Modifier.weight(1f).height(34.dp),contentPadding=PaddingValues(horizontal=2.dp,vertical=0.dp)) {
-                    Text(value.label,fontSize=10.sp,maxLines=1)
-                }
-            }
-            TextButton(onClick={expanded=!expanded},enabled=enabled,
-                colors=ButtonDefaults.textButtonColors(containerColor=if(target!=null||expanded)Color(0xFFEAF6F2) else Color.White,contentColor=Color(0xFF217E78)),
-                modifier=Modifier.weight(1f).height(34.dp),contentPadding=PaddingValues(horizontal=2.dp,vertical=0.dp)) {
-                Text("주당 횟수 설정 ${if(expanded)"▴" else "▾"}",fontSize=10.sp,maxLines=1)
-            }
-        }
-        if(expanded) Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(3.dp)) {
+        Text("주당 횟수",fontSize=12.sp,color=Muted)
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(3.dp)) {
             (0..7).forEach {value ->
-                val selected=if(value==0)target==null else target==value
-                Box(Modifier.weight(1f).height(32.dp).clip(RoundedCornerShape(8.dp))
+                val selected=target==value
+                Box(Modifier.weight(if(value==7)1.5f else 1f).height(36.dp).clip(RoundedCornerShape(8.dp))
                     .background(if(selected)Color(0xFF217E78) else Color.White)
-                    .selectable(selected=selected,enabled=enabled,role=androidx.compose.ui.semantics.Role.RadioButton,onClick={
-                        onSchedule(GoalSchedule.ALL)
-                        onTarget(value.takeIf {it>0})
-                    })
-                    .semantics {contentDescription=if(value==0)"주당 횟수 해제" else "주당 ${value}회"},contentAlignment=Alignment.Center) {
-                    Text(value.toString(),fontSize=12.sp,color=if(selected)Color.White else Muted,fontWeight=FontWeight.SemiBold)
+                    .selectable(selected=selected,enabled=enabled,role=androidx.compose.ui.semantics.Role.RadioButton,onClick={onTarget(value)})
+                    .semantics {contentDescription=if(value==7)"매일" else "주당 "+value+"회"},contentAlignment=Alignment.Center) {
+                    Text(if(value==7)"매일" else value.toString(),fontSize=12.sp,color=if(selected)Color.White else Muted,fontWeight=FontWeight.SemiBold)
                 }
             }
         }

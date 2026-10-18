@@ -173,13 +173,5 @@ internal fun goalSymbol(title: String): Symbol = when {
     else -> Symbol.Heart
 }
 
-internal val Goal.typeAccent:Color get()=when {
-    weeklyTarget!=null || schedule==GoalSchedule.ALL -> Color(0xFF217E78)
-    schedule==GoalSchedule.WEEKEND -> Color(0xFFA54F64)
-    else -> Color(0xFF966312)
-}
-internal val Goal.typeBackground:Color get()=when {
-    weeklyTarget!=null || schedule==GoalSchedule.ALL -> Color(0xFFEAF6F2)
-    schedule==GoalSchedule.WEEKEND -> Color(0xFFFBEFF1)
-    else -> Color(0xFFFBF3DF)
-}
+internal val Goal.typeAccent:Color get()=Color(0xFF217E78)
+internal val Goal.typeBackground:Color get()=Color(0xFFEAF6F2)
