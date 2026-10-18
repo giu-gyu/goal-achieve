@@ -164,3 +164,9 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 
 - 주간·월간 기록 표에서 주 7회 목표는 매일 배지를 표시하지 않음. 주 0~6회 목표의 주 X회 배지는 유지.
 - assembleDebug, testDebugUnitTest, lintDebug 성공. 실기기 화면 검증 미실시.
+
+## 메모 날짜와 본문 시각 구분 (2026-10-18)
+
+- 오늘·기록의 공통 메모 카드에서 날짜를 상단의 작은 색상 라벨로 분리. 본문은 별도 줄에 14sp/22sp로 표시.
+- 카드 모서리 14dp, 내부 여백 14dp, 요소 간격 10dp로 정리. 복사·수정·반응 메뉴 유지.
+- assembleDebug, testDebugUnitTest, lintDebug 성공. 실기기 화면 육안 검증 미실시.
