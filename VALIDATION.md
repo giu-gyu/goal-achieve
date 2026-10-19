@@ -203,3 +203,11 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - assembleDebug, testDebugUnitTest, lintDebug 성공. 41개 테스트 통과: 기존 동작 변환, 성별 없이 8개 동작 선택, 테마 우선순위·범위 fallback 검증 포함.
 - 최신 APK를 루트 배포 파일과 artifacts/together-daily.apk에 반영. ADB 연결 기기 목록이 비어 있어 폰 설치 및 파일 전송은 미완료.
 - 실기기 UI 육안 검증 미실시. Firestore 규칙 변경 없음.
+
+## 초대 코드 보내기 버튼 (2026-10-19)
+
+- 오늘 탭 날짜 카드 아래와 내 프로필에 초대 코드 보내기 버튼 추가. 체험 모드 및 빈 공간 ID에서는 숨김.
+- Android ACTION_SEND(text/plain) 공유 선택창에서 초대 코드 및 참여 안내 전달. 실제 전송 대상과 전송은 사용자가 공유 앱에서 선택.
+- 공유 앱을 열 수 없는 경우 짧은 토스트 표시. 기존 초대 코드 복사 메뉴 유지.
+- assembleDebug, testDebugUnitTest(41개), lintDebug 성공. 최신 APK 갱신.
+- ADB 연결 목록이 비어 있어 폰 설치 미실시. 공유 앱 선택·실제 발송의 실기기 검증 미실시.
