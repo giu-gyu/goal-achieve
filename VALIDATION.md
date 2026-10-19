@@ -184,3 +184,13 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - 주간·월간 기록 표에서 day < goal.start인 칸에 회색 배경과 — 표시. 생성일 당일부터 기존 O/X·미기록 표시 적용.
 - 해당 칸이 있는 표에는 회색 — : 목표 생성 전 범례 표시. 화면 읽기 설명에도 목표 생성 전 안내 추가.
 - assembleDebug, testDebugUnitTest, lintDebug 성공. 실기기 화면 검증 미실시. 달성률 계산 변경 없음.
+
+## 오늘 날짜 복귀·날짜 차이·메모 키보드 대응 (2026-10-19)
+
+- 앱 시작·홈 화면에서 복귀(ON_RESUME)·오늘 탭 선택 시 한국 기준 오늘로 날짜 초기화. 날짜별 메모 초안은 기존 방식으로 보관.
+- 오늘인 경우 이동 버튼 숨김. 다른 날짜에는 오늘로 이동 버튼과 오늘 기준 부호 있는 날짜 차이(-1, +2 등) 표시.
+- 오늘이 아닌 날짜의 새 메모 입력칸 포커스 시 짧은 토스트로 오늘 날짜가 아니에요 안내. 작성은 계속 가능.
+- Scaffold에 IME 여백 적용, 입력 영역은 키보드 높이·포커스 변화에 맞춰 보이는 영역으로 스크롤.
+- build.ps1: assembleDebug, testDebugUnitTest, lintDebug 성공. 단위 테스트 38개 통과.
+- 연결 기기 R3CX300C7GA에 adb install -r 성공. Download/together-daily.apk 파일 전송 완료.
+- 실기기 날짜 전환·키보드 입력의 육안/터치 검증은 미실시. Firestore 규칙 변경 없음.
