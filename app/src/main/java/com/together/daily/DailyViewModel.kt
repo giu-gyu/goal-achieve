@@ -124,7 +124,7 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
         }
         listeners += pair.collection("profiles").addSnapshotListener {snapshot,e ->
             if(e!=null) {error="프로필을 불러오지 못했습니다. Firebase 규칙을 확인하세요.";return@addSnapshotListener}
-            profiles=snapshot?.documents?.associate {it.id to MemberProfile(it.getString("bio").orEmpty(),it.getString("resolve").orEmpty(),it.getString("gender")?.let {value->runCatching {ProfileGender.valueOf(value)}.getOrNull()},it.getLong("emojiStyle")?.toInt()?.takeIf {index->index in MemberEmojiStyles.indices}?:0)}.orEmpty()
+            profiles=snapshot?.documents?.associate {it.id to MemberProfile(it.getString("bio").orEmpty(),it.getString("resolve").orEmpty(),it.getString("gender")?.let {value->runCatching {ProfileGender.valueOf(value)}.getOrNull()},it.getLong("emojiStyle")?.toInt()?.takeIf {index->index in MemberEmojiStyles.indices}?:0,it.getLong("themeIndex")?.toInt()?.takeIf {index->index in ProfileThemes.indices})}.orEmpty()
         }
         listeners += pair.collection("goals").addSnapshotListener { snapshot, e ->
             if (e != null) { error = "목표를 불러오지 못했어요. 연결을 확인해주세요."; return@addSnapshotListener }
@@ -203,16 +203,16 @@ class DailyViewModel(application: Application) : AndroidViewModel(application) {
                 updated.reactions[uid]?:com.google.firebase.firestore.FieldValue.delete()).await()
         memos=memos.map {if(it.id==memo.id)it.copy(reactions=updated.reactions) else it}
     }
-    fun saveProfile(name:String,bio:String,resolve:String,gender:ProfileGender?=profiles[uid]?.gender,emojiStyle:Int=profiles[uid]?.emojiStyle?:0,onSaved:()->Unit={})=work {
-        require(name.trim().length in 1..20&&bio.length<=200&&resolve.length<=200&&emojiStyle in MemberEmojiStyles.indices)
-        if(demo) {names=names+(uid to name.trim());profiles=profiles+(uid to MemberProfile(bio.trim(),resolve.trim(),gender,emojiStyle));onSaved();return@work}
+    fun saveProfile(name:String,bio:String,resolve:String,emojiStyle:Int=selectedEmojiIndex(profiles[uid]?:MemberProfile()),themeIndex:Int=profileThemeIndex(profiles[uid]),onSaved:()->Unit={})=work {
+        require(name.trim().length in 1..20&&bio.length<=200&&resolve.length<=200&&emojiStyle in SelectableMemberEmojiIndices&&themeIndex in ProfileThemes.indices)
+        if(demo) {names=names+(uid to name.trim());profiles=profiles+(uid to MemberProfile(bio.trim(),resolve.trim(),emojiStyle=emojiStyle,themeIndex=themeIndex));onSaved();return@work}
         val pair=db!!.collection("pairs").document(pairId)
         val batch=db.batch()
         batch.update(pair,com.google.firebase.firestore.FieldPath.of("names",uid),name.trim())
-        batch.set(pair.collection("profiles").document(uid),mapOf("bio" to bio.trim(),"resolve" to resolve.trim(),"gender" to gender?.name,"emojiStyle" to emojiStyle))
+        batch.set(pair.collection("profiles").document(uid),mapOf("bio" to bio.trim(),"resolve" to resolve.trim(),"themeIndex" to themeIndex,"emojiStyle" to emojiStyle))
         batch.commit().await()
         names=names+(uid to name.trim())
-        profiles=profiles+(uid to MemberProfile(bio.trim(),resolve.trim(),gender,emojiStyle))
+        profiles=profiles+(uid to MemberProfile(bio.trim(),resolve.trim(),emojiStyle=emojiStyle,themeIndex=themeIndex))
         onSaved()
     }
     fun addGoal(title:String,position:Int?=null,weeklyTarget:Int=7,onSaved:()->Unit={})=work {

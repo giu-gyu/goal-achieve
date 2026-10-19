@@ -1,6 +1,7 @@
 package com.together.daily
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,19 +25,25 @@ internal fun ProfileDialog(vm:DailyViewModel,onDismiss:()->Unit) {
     val profile=vm.profiles[vm.uid]?:MemberProfile()
     var name by rememberSaveable(vm.uid) {mutableStateOf(vm.names[vm.uid].orEmpty())}
     var bio by rememberSaveable(vm.uid,profile.bio) {mutableStateOf(profile.bio)}
-    var gender by rememberSaveable(vm.uid,profile.gender) {mutableStateOf(profile.gender)}
-    var emojiStyle by rememberSaveable(vm.uid,profile.emojiStyle) {mutableIntStateOf(profile.emojiStyle)}
+    var themeIndex by rememberSaveable(vm.uid,profile.themeIndex) {mutableIntStateOf(profileThemeIndex(profile))}
+    var emojiStyle by rememberSaveable(vm.uid,profile.emojiStyle) {mutableIntStateOf(selectedEmojiIndex(profile))}
     var resolve by rememberSaveable(vm.uid,profile.resolve) {mutableStateOf(profile.resolve)}
     AlertDialog(onDismissRequest={if(!vm.busy)onDismiss()},title={Text("내 프로필",fontSize=18.sp)},
         text={Column(Modifier.fillMaxWidth().heightIn(max=480.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(name,{if(it.length<=20)name=it},label={Text("이름")},singleLine=true,modifier=Modifier.fillMaxWidth())
-            Text("성별 · 남자 블루 / 여자 보라",fontSize=12.sp,color=Muted)
-            Segments(listOf("남자","여자","미설정"),when(gender) {ProfileGender.MALE->0;ProfileGender.FEMALE->1;null->2},verticalPadding=8.dp) {
-                gender=when(it) {0->ProfileGender.MALE;1->ProfileGender.FEMALE;else->null}
+            Text("테마 색상 · ${ProfileThemes[themeIndex].label}",fontSize=12.sp,color=Muted)
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                ProfileThemes.forEachIndexed {index,theme ->
+                    Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(Color(theme.rgb))
+                        .selectable(selected=index==themeIndex,enabled=!vm.busy,role=Role.RadioButton,onClick={themeIndex=index})
+                        .semantics {contentDescription=theme.label+" 테마"},contentAlignment=Alignment.Center) {
+                        if(index==themeIndex) Text("✓",color=Color.White,fontSize=22.sp)
+                    }
+                }
             }
             run {
                 Text("감정 · 동작 이모티콘",fontSize=12.sp,color=Muted)
-                MemberEmojiStyles.indices.toList().chunked(4).forEach {indices ->
+                SelectableMemberEmojiIndices.chunked(4).forEach {indices ->
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
                         indices.forEach {index ->
                             val style=MemberEmojiStyles[index]
@@ -45,7 +52,7 @@ internal fun ProfileDialog(vm:DailyViewModel,onDismiss:()->Unit) {
                                 .selectable(selected=index==emojiStyle,enabled=!vm.busy,role=Role.RadioButton,onClick={emojiStyle=index})
                                 .semantics {contentDescription=style.label}
                                 .padding(vertical=7.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(3.dp)) {
-                                Text(memberEmoji(MemberProfile(gender=gender,emojiStyle=index)),fontSize=24.sp)
+                                Text(memberEmoji(MemberProfile(emojiStyle=index)),fontSize=24.sp)
                                 Text(style.label,fontSize=10.sp,color=Muted)
                             }
                         }
@@ -56,6 +63,6 @@ internal fun ProfileDialog(vm:DailyViewModel,onDismiss:()->Unit) {
             OutlinedTextField(bio,{if(it.length<=200)bio=it},label={Text("자기소개")},maxLines=3,modifier=Modifier.fillMaxWidth())
             OutlinedTextField(resolve,{if(it.length<=200)resolve=it},label={Text("각오")},maxLines=3,modifier=Modifier.fillMaxWidth())
 
-        }},confirmButton={Button(onClick={vm.saveProfile(name,bio,resolve,gender,emojiStyle,onSaved=onDismiss)},enabled=!vm.busy&&name.isNotBlank()) {Text(if(vm.busy)"저장 중…" else "저장")}},
+        }},confirmButton={Button(onClick={vm.saveProfile(name,bio,resolve,emojiStyle,themeIndex,onSaved=onDismiss)},enabled=!vm.busy&&name.isNotBlank()) {Text(if(vm.busy)"저장 중…" else "저장")}},
         dismissButton={TextButton(onClick=onDismiss,enabled=!vm.busy){Text("취소")}})
 }

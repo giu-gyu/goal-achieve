@@ -76,7 +76,7 @@ internal fun memoReactions(raw:Any?):Map<String,List<String>> =
 internal fun List<DailyMemo>.withMemo(memo:DailyMemo):List<DailyMemo> = filterNot {it.id==memo.id}+memo
 
 enum class ProfileGender { MALE, FEMALE }
-data class MemberProfile(val bio:String="",val resolve:String="",val gender:ProfileGender?=null,val emojiStyle:Int=0)
+data class MemberProfile(val bio:String="",val resolve:String="",val gender:ProfileGender?=null,val emojiStyle:Int=0,val themeIndex:Int?=null)
 
 fun successCount(goal:Goal,entries:List<Entry>,start:LocalDate,end:LocalDate,today:LocalDate):Int =
     entries.filter {it.goalId==goal.id&&it.done&&it.date>=start&&it.date<=end&&it.date<=today&&goal.scheduled(it.date)}.map {it.date}.distinct().size

@@ -112,7 +112,7 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
     if(weekOffset!=0L) TextButton(onClick={weekOffset=0L},contentPadding=PaddingValues(4.dp),modifier=Modifier.align(Alignment.CenterHorizontally).height(30.dp)) {Text(if(monthly)"이번 달" else "이번 주",fontSize=11.sp)}
     val members=vm.names.entries.sortedBy {if(it.key==vm.uid)0 else 1}
     members.forEach {member ->
-        val palette=recordPalette(vm.profiles[member.key]?.gender)
+        val palette=recordPalette(vm.profiles[member.key])
         Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(24.dp),color=palette.background,
             border=androidx.compose.foundation.BorderStroke(1.dp,palette.border)) {
             Column(Modifier.padding(horizontal=12.dp,vertical=8.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -135,17 +135,15 @@ internal fun HistoryPage(vm:DailyViewModel,today:LocalDate) {
 
 private data class RecordPalette(val accent:Color,val background:Color,val header:Color,val border:Color,val cell:Color)
 
-private fun recordPalette(gender:ProfileGender?)=when(gender) {
-ProfileGender.MALE ->
-    RecordPalette(Color(0xFF315F85),Color(0xFFEFF6FC),Color(0xFFDCEAF7),Color(0xFFBFD4E6),Color(0xFFF9FCFF))
-ProfileGender.FEMALE -> RecordPalette(Color(0xFF72528D),Color(0xFFF5F0FA),Color(0xFFE8DDF2),Color(0xFFD4C3E3),Color(0xFFFCFAFF))
-null -> RecordPalette(Ink,Color(0xFFF4F5F6),Color(0xFFE9ECF0),Color(0xFFD3D9E0),Color(0xFFFAFBFC))
+private fun recordPalette(profile:MemberProfile?):RecordPalette {
+    val accent=Color(ProfileThemes[profileThemeIndex(profile)].rgb)
+    fun tint(amount:Float)=androidx.compose.ui.graphics.lerp(Color.White,accent,amount)
+    return RecordPalette(accent,tint(.06f),tint(.14f),tint(.28f),tint(.025f))
 }
-
 @Composable
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 internal fun MemoCard(vm:DailyViewModel,memo:DailyMemo) {
-    val palette=recordPalette(vm.profiles[memo.ownerId]?.gender)
+    val palette=recordPalette(vm.profiles[memo.ownerId])
     var menu by remember {mutableStateOf(false)}
     var editing by remember {mutableStateOf(false)}
     var draft by rememberSaveable(memo.id) {mutableStateOf(memo.text)}
@@ -206,7 +204,7 @@ internal fun MemoCard(vm:DailyViewModel,memo:DailyMemo) {
 }
 @Composable
 private fun WeeklyRecords(vm:DailyViewModel,ownerId:String,name:String,start:LocalDate,end:LocalDate,today:LocalDate) {
-    val palette=recordPalette(vm.profiles[ownerId]?.gender)
+    val palette=recordPalette(vm.profiles[ownerId])
     val goals=vm.goals.filter {it.ownerId==ownerId&&it.start<=end&&(it.end==null||it.end>=start)}
     val records=vm.entries.associateBy {it.goalId to it.date}
     val days=generateSequence(start){it.plusDays(1)}.takeWhile {it<=end}.toList()
