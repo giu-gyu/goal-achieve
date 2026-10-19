@@ -318,7 +318,15 @@ internal fun StatsPage(vm:DailyViewModel,today:LocalDate,onLogout:()->Unit) {
                     ranked.forEachIndexed {index,(goal,p) ->
                         HorizontalDivider(color=Line)
                         Row(Modifier.fillMaxWidth().background(goal.typeBackground,RoundedCornerShape(10.dp)).padding(8.dp),verticalAlignment=Alignment.CenterVertically) {
-                            Text(listOf("${index+1}. ${goal.title}",goal.typeLabel).filter {it.isNotBlank()}.joinToString(" · "),color=goal.typeAccent,fontSize=12.sp,lineHeight=16.sp,modifier=Modifier.weight(1f))
+                            Text("${index+1}. ${goal.title}",color=goal.typeAccent,fontSize=12.sp,lineHeight=16.sp,modifier=Modifier.weight(1f))
+                            if(goal.weeklyTarget!=7) {
+                                Spacer(Modifier.width(6.dp))
+                                Surface(color=Color.White.copy(alpha=.8f),shape=CircleShape,
+                                    border=androidx.compose.foundation.BorderStroke(.5.dp,goal.typeAccent.copy(alpha=.3f))) {
+                                    Text(goal.frequencyLabel,fontSize=10.sp,color=goal.typeAccent,
+                                        modifier=Modifier.padding(horizontal=6.dp,vertical=3.dp),maxLines=1)
+                                }
+                            }
                             Spacer(Modifier.width(8.dp))
                             Text(if(p.total==0)"—" else "${p.percent}%",fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=goal.typeAccent)
                         }
