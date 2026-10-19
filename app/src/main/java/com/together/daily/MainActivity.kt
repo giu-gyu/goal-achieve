@@ -234,6 +234,7 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,currentDate:LocalDate,on
             LinearProgressIndicator(progress={if(list.isEmpty())0f else done.toFloat()/list.size},modifier=Modifier.fillMaxWidth().height(4.dp).clip(CircleShape),color=Coral,trackColor=Color.White.copy(alpha=.8f),drawStopIndicator={})
         }
     }
+    InviteCodeButton(vm)
     OwnerSwitch(vm,owner){owner=it}
     if(list.isEmpty()) Text("선택한 날짜에 등록된 목표가 없습니다.",color=Muted,fontSize=14.sp)
     list.forEach {goal -> GoalTile(goal,vm.entries.find {it.goalId==goal.id&&it.date==today}?.done,

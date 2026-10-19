@@ -19,6 +19,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import android.content.ActivityNotFoundException
+import android.widget.Toast
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -350,4 +354,21 @@ private fun Modifier.weekBoundary(visible:Boolean,color:Color):Modifier = if(!vi
     drawContent()
     drawLine(color=color,start=androidx.compose.ui.geometry.Offset(1.25.dp.toPx(),0f),
         end=androidx.compose.ui.geometry.Offset(1.25.dp.toPx(),size.height),strokeWidth=2.5.dp.toPx())
+}
+
+@Composable
+internal fun InviteCodeButton(vm:DailyViewModel) {
+    if(vm.demo||vm.pairId.isBlank()) return
+    val context=LocalContext.current
+    OutlinedButton(onClick={
+        val send=Intent(Intent.ACTION_SEND).apply {
+            type="text/plain"
+            putExtra(Intent.EXTRA_TEXT,"쏘규 Daily 챌린지에 초대해요!\n초대 코드: ${vm.pairId}\n앱에서 ‘초대받았어요’를 선택하고 코드를 입력해주세요.")
+        }
+        try {
+            context.startActivity(Intent.createChooser(send,"초대 코드 보내기"))
+        } catch(_:ActivityNotFoundException) {
+            Toast.makeText(context,"공유할 수 있는 앱이 없어요",Toast.LENGTH_SHORT).show()
+        }
+    },modifier=Modifier.fillMaxWidth()) {Text("초대 코드 보내기",fontSize=13.sp)}
 }

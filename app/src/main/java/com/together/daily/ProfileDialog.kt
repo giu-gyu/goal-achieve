@@ -31,6 +31,7 @@ internal fun ProfileDialog(vm:DailyViewModel,onDismiss:()->Unit) {
     AlertDialog(onDismissRequest={if(!vm.busy)onDismiss()},title={Text("내 프로필",fontSize=18.sp)},
         text={Column(Modifier.fillMaxWidth().heightIn(max=480.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(name,{if(it.length<=20)name=it},label={Text("이름")},singleLine=true,modifier=Modifier.fillMaxWidth())
+            InviteCodeButton(vm)
             Text("테마 색상 · ${ProfileThemes[themeIndex].label}",fontSize=12.sp,color=Muted)
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
                 ProfileThemes.forEachIndexed {index,theme ->
