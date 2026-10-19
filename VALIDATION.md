@@ -194,3 +194,12 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - build.ps1: assembleDebug, testDebugUnitTest, lintDebug 성공. 단위 테스트 38개 통과.
 - 연결 기기 R3CX300C7GA에 adb install -r 성공. Download/together-daily.apk 파일 전송 완료.
 - 실기기 날짜 전환·키보드 입력의 육안/터치 검증은 미실시. Firestore 규칙 변경 없음.
+
+## 성별 선택 제거·프로필 테마·동작 이모티콘 (2026-10-19)
+
+- 프로필에서 성별 선택 제거. 블루·보라 포함 20색을 가로 한 줄 스크롤로 선택하고 체크 표시 및 선택 색상명 표시.
+- themeIndex를 프로필에 저장하고 기록 표·메모 날짜 팔레트에 적용. 기존 gender는 과거 데이터 색상·동작 표시 호환을 위해 읽기만 하며 새 저장에는 포함하지 않음.
+- 서있기·걷기·달리기·인사 각각 남자·여자 이모티콘을 독립 선택지로 제공. 기존 감정 인덱스 유지, 과거 동작은 저장 시 대응하는 새 선택지로 변환.
+- assembleDebug, testDebugUnitTest, lintDebug 성공. 41개 테스트 통과: 기존 동작 변환, 성별 없이 8개 동작 선택, 테마 우선순위·범위 fallback 검증 포함.
+- 최신 APK를 루트 배포 파일과 artifacts/together-daily.apk에 반영. ADB 연결 기기 목록이 비어 있어 폰 설치 및 파일 전송은 미완료.
+- 실기기 UI 육안 검증 미실시. Firestore 규칙 변경 없음.
