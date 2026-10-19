@@ -1,6 +1,15 @@
 package com.together.daily
 
 import android.os.Bundle
+import android.widget.Toast
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
@@ -72,6 +81,17 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
     var today by remember { mutableStateOf(koreaToday()) }
     var selectedDateText by rememberSaveable { mutableStateOf<String?>(null) }
     val selectedDate=selectedDateText?.let(LocalDate::parse)?:today
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                today = koreaToday()
+                selectedDateText = null
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     val scroll = rememberScrollState()
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(Unit) { while(true) { today=koreaToday(); kotlinx.coroutines.delay(30_000) } }
@@ -79,11 +99,11 @@ private fun DailyApp(vm: DailyViewModel = viewModel()) {
     LaunchedEffect(vm.error) {
         vm.error?.let { snackbar.showSnackbar(it,actionLabel="확인",duration=SnackbarDuration.Long); vm.clearError() }
     }
-    Scaffold(containerColor=Cream,snackbarHost={ SnackbarHost(snackbar) },bottomBar={
-        if(vm.pairId.isNotEmpty()) BottomMenu(tab) { tab=it }
+    Scaffold(modifier=Modifier.imePadding(),containerColor=Cream,snackbarHost={ SnackbarHost(snackbar) },bottomBar={
+        if(vm.pairId.isNotEmpty()) BottomMenu(tab) { if(it==0) {today=koreaToday();selectedDateText=null}; tab=it }
     }) { padding ->
         Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(scroll).padding(horizontal=if(tab==1&&vm.pairId.isNotEmpty())0.dp else if(tab==2&&vm.pairId.isNotEmpty())12.dp else 22.dp),
+        Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).verticalScroll(scroll).padding(horizontal=if(tab==1&&vm.pairId.isNotEmpty())0.dp else if(tab==2&&vm.pairId.isNotEmpty())12.dp else 22.dp),
             verticalArrangement=Arrangement.spacedBy(if(tab!=0&&vm.pairId.isNotEmpty())8.dp else 8.dp)) {
             Spacer(Modifier.height(1.dp))
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
@@ -186,6 +206,7 @@ private fun BottomMenu(selected: Int,onSelect:(Int)->Unit) {
 }
 
 @Composable
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 private fun TodayPage(vm:DailyViewModel,today:LocalDate,currentDate:LocalDate,onDateChange:(LocalDate)->Unit,onEdit:()->Unit,onCelebrate:()->Unit,onMemoSaved:(String)->Unit) {
     var owner by rememberSaveable { mutableIntStateOf(0) }
     val id=if(owner==0) vm.uid else vm.names.keys.firstOrNull {it!=vm.uid}.orEmpty()
@@ -193,8 +214,13 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,currentDate:LocalDate,on
     val done=list.count {g->vm.entries.any {it.goalId==g.id&&it.date==today&&it.done}}
     Surface(color=Peach.copy(alpha=.65f),shape=RoundedCornerShape(18.dp),modifier=Modifier.fillMaxWidth()) {
         Column(Modifier.padding(horizontal=10.dp,vertical=4.dp),verticalArrangement=Arrangement.spacedBy(0.dp)) {
-            TextButton(onClick={onDateChange(currentDate)},enabled=!vm.busy,
-                modifier=Modifier.align(Alignment.CenterHorizontally).height(24.dp),contentPadding=PaddingValues(0.dp)) {Text("오늘",fontSize=11.sp,color=Coral)}
+            if(today!=currentDate) Row(Modifier.align(Alignment.CenterHorizontally),verticalAlignment=Alignment.CenterVertically,
+                horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                val offset=java.time.temporal.ChronoUnit.DAYS.between(currentDate,today)
+                Text(if(offset>0) "+$offset" else "$offset",fontSize=12.sp,color=Coral,fontWeight=FontWeight.SemiBold)
+                TextButton(onClick={onDateChange(currentDate)},enabled=!vm.busy,
+                    modifier=Modifier.height(28.dp),contentPadding=PaddingValues(horizontal=4.dp)) {Text("오늘로 이동",fontSize=11.sp,color=Coral)}
+            }
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                 IconButton(onClick={onDateChange(today.minusDays(1))},enabled=!vm.busy,modifier=Modifier.size(32.dp)) {Mark(Symbol.Back,description="이전 날짜")}
                 Text(today.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일 E요일",Locale.KOREAN)),color=Ink,fontSize=17.sp,fontWeight=FontWeight.Bold,
@@ -220,9 +246,19 @@ private fun TodayPage(vm:DailyViewModel,today:LocalDate,currentDate:LocalDate,on
     key(vm.uid,id,today.toString()) {
     if(id.isNotBlank()) {
         var draft by rememberSaveable {mutableStateOf(vm.memoDraft(today,id).orEmpty())}
-        Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
+        val context=LocalContext.current
+        val bringIntoView=remember {BringIntoViewRequester()}
+        var focused by remember {mutableStateOf(false)}
+        val imeBottom=WindowInsets.ime.getBottom(LocalDensity.current)
+        LaunchedEffect(focused,imeBottom) {
+            if(focused) bringIntoView.bringIntoView()
+        }
+        Column(Modifier.bringIntoViewRequester(bringIntoView),verticalArrangement=Arrangement.spacedBy(4.dp)) {
             Text((if(id==vm.uid)"" else vm.names[id].orEmpty()+"의 ")+(if(today==currentDate)"오늘 메모" else "선택한 날짜의 메모"),fontSize=14.sp,fontWeight=FontWeight.SemiBold)
-            OutlinedTextField(draft,{if(it.length<=2000) {draft=it;vm.editMemoDraft(today,it,id)}},placeholder={Text("이 날의 메모")},minLines=2,maxLines=5,modifier=Modifier.fillMaxWidth())
+            OutlinedTextField(draft,{if(it.length<=2000) {draft=it;vm.editMemoDraft(today,it,id)}},placeholder={Text("이 날의 메모")},minLines=2,maxLines=5,modifier=Modifier.fillMaxWidth().onFocusChanged {
+                if(it.isFocused&&!focused&&today!=koreaToday()) Toast.makeText(context,"오늘 날짜가 아니에요",Toast.LENGTH_SHORT).show()
+                focused=it.isFocused
+            })
             TextButton(onClick={
                 val submitted=draft
                 vm.saveMemo(today,submitted,targetId=id,onSaved={
