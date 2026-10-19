@@ -211,3 +211,10 @@ artifacts/together-daily-demo.apk는 Firebase 연결 파일 없이 빌드한 체
 - 공유 앱을 열 수 없는 경우 짧은 토스트 표시. 기존 초대 코드 복사 메뉴 유지.
 - assembleDebug, testDebugUnitTest(41개), lintDebug 성공. 최신 APK 갱신.
 - ADB 연결 목록이 비어 있어 폰 설치 미실시. 공유 앱 선택·실제 발송의 실기기 검증 미실시.
+
+## 달성률 목표 횟수 배지 (2026-10-19)
+
+- 주간·월간 달성률 목표 목록에서 매일(주 7회) 문구 숨김.
+- 주 0~6회는 목표 이름과 분리된 둥근 테두리 배지에 주 X회 표시. 기록 탭과 동일한 흰 배경·목표 강조색 사용.
+- 순위·목표 이름·달성률 수치와 계산 로직 유지.
+- assembleDebug, testDebugUnitTest(41개), lintDebug 성공. 최신 APK 갱신. 실기기 UI 육안 검증 미실시.
